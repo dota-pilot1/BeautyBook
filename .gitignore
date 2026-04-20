@@ -1,0 +1,25 @@
+# Gradle
+.gradle/
+build/
+twilio-callcenter-server/.gradle/
+twilio-callcenter-server/build/
+
+# IntelliJ
+.idea/
+*.iml
+
+# Node
+twilio-callcenter-front/node_modules/
+twilio-callcenter-front/.next/
+
+# Env (민감 정보 — 절대 커밋 금지)
+.env
+.env.local
+.env*.local
+twilio-callcenter-server/.env
+
+# Claude Code
+.claude/
+
+# OS
+.DS_Store
