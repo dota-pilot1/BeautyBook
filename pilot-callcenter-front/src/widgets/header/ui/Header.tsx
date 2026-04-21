@@ -128,7 +128,7 @@ export function Header() {
               <NavLink href="/dashboard" exact>
                 대시보드
               </NavLink>
-              {user?.role.code === "ROLE_ADMIN" && <AdminDropdown />}
+              <AdminDropdown />
             </>
           )}
         </nav>
