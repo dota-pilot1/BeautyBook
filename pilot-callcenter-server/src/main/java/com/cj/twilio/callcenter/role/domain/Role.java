@@ -1,5 +1,6 @@
 package com.cj.twilio.callcenter.role.domain;
 
+import com.cj.twilio.callcenter.permission.domain.Permission;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -8,6 +9,8 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "roles", uniqueConstraints = @UniqueConstraint(columnNames = "code"))
@@ -31,6 +34,14 @@ public class Role {
     @Column(nullable = false)
     private boolean systemRole;
 
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "role_permissions",
+            joinColumns = @JoinColumn(name = "role_id"),
+            inverseJoinColumns = @JoinColumn(name = "permission_id")
+    )
+    private Set<Permission> permissions = new HashSet<>();
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
@@ -51,5 +62,9 @@ public class Role {
     public void rename(String name, String description) {
         this.name = name;
         this.description = description;
+    }
+
+    public void setPermissions(Set<Permission> permissions) {
+        this.permissions = permissions;
     }
 }

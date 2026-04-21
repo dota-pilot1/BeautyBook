@@ -14,7 +14,7 @@ import java.util.List;
 
 @Slf4j
 @Component
-@Order(1)
+@Order(2)
 @RequiredArgsConstructor
 public class RoleSeeder implements ApplicationRunner {
 

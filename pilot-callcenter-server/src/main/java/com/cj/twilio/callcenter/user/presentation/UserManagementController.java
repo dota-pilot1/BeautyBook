@@ -15,12 +15,14 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
-@Tag(name = "User Management", description = "유저 CRUD 및 롤/활성 상태 관리 (스텝0: 접근 제한 없음)")
+@PreAuthorize("hasRole('ADMIN')")
+@Tag(name = "User Management", description = "유저 CRUD 및 롤/활성 상태 관리 (ROLE_ADMIN 전용)")
 public class UserManagementController {
 
     private final UserManagementService userManagementService;

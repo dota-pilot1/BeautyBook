@@ -2,6 +2,8 @@ package com.cj.twilio.callcenter.role.application;
 
 import com.cj.twilio.callcenter.common.exception.BusinessException;
 import com.cj.twilio.callcenter.common.exception.ErrorCode;
+import com.cj.twilio.callcenter.permission.domain.Permission;
+import com.cj.twilio.callcenter.permission.infrastructure.PermissionRepository;
 import com.cj.twilio.callcenter.role.domain.Role;
 import com.cj.twilio.callcenter.role.infrastructure.RoleRepository;
 import com.cj.twilio.callcenter.role.presentation.dto.CreateRoleRequest;
@@ -11,7 +13,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -19,6 +23,7 @@ public class RoleService {
 
     private final RoleRepository roleRepository;
     private final UserRepository userRepository;
+    private final PermissionRepository permissionRepository;
 
     @Transactional(readOnly = true)
     public List<Role> findAll() {
@@ -65,5 +70,19 @@ public class RoleService {
             throw new BusinessException(ErrorCode.ROLE_IN_USE);
         }
         roleRepository.delete(role);
+    }
+
+    @Transactional(readOnly = true)
+    public Role getRoleWithPermissions(Long id) {
+        return roleRepository.findByIdWithPermissions(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ROLE_NOT_FOUND));
+    }
+
+    @Transactional
+    public Role setPermissions(Long roleId, List<Long> permissionIds) {
+        Role role = getById(roleId);
+        Set<Permission> permissions = new HashSet<>(permissionRepository.findAllById(permissionIds));
+        role.setPermissions(permissions);
+        return role;
     }
 }

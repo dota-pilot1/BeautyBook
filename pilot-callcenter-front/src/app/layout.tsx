@@ -17,8 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Twilio Callcenter",
-  description: "Twilio-based call center dashboard",
+  title: "BeautyBook",
+  description: "미용실 예약 관리 플랫폼",
 };
 
 export default function RootLayout({

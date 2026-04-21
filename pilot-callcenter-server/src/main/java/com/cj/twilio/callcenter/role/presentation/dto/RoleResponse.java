@@ -1,15 +1,23 @@
 package com.cj.twilio.callcenter.role.presentation.dto;
 
+import com.cj.twilio.callcenter.permission.presentation.dto.PermissionSummary;
 import com.cj.twilio.callcenter.role.domain.Role;
+
+import java.util.List;
 
 public record RoleResponse(
         Long id,
         String code,
         String name,
         String description,
-        boolean systemRole
+        boolean systemRole,
+        List<PermissionSummary> permissions
 ) {
     public static RoleResponse from(Role r) {
-        return new RoleResponse(r.getId(), r.getCode(), r.getName(), r.getDescription(), r.isSystemRole());
+        List<PermissionSummary> perms = r.getPermissions().stream()
+                .map(PermissionSummary::from)
+                .toList();
+        return new RoleResponse(r.getId(), r.getCode(), r.getName(),
+                r.getDescription(), r.isSystemRole(), perms);
     }
 }

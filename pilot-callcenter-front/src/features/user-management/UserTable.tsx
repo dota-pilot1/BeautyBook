@@ -1,18 +1,34 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { userApi } from "@/entities/user/api/userApi";
 import type { UserListItem } from "@/entities/user/model/types";
 import { RoleBadge } from "./RoleBadge";
 import { RoleChangeDialog } from "./RoleChangeDialog";
 import { ActiveToggle } from "./ActiveToggle";
+import { CreateUserDialog } from "./CreateUserDialog";
+import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
+import { toast, toastError } from "@/shared/lib/toast";
 
 const PAGE_SIZE = 10;
 
 export function UserTable() {
   const [page, setPage] = useState(0);
   const [editingUser, setEditingUser] = useState<UserListItem | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<UserListItem | null>(null);
+  const qc = useQueryClient();
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => userApi.delete(id),
+    onSuccess: () => {
+      toast.success("유저가 삭제되었습니다.");
+      qc.invalidateQueries({ queryKey: ["users"] });
+      setDeleteTarget(null);
+    },
+    onError: (e) => toastError(e, "삭제에 실패했습니다."),
+  });
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["users", page, PAGE_SIZE],
@@ -31,6 +47,15 @@ export function UserTable() {
 
   return (
     <div className="space-y-4">
+      <div className="flex justify-end">
+        <button
+          onClick={() => setCreateOpen(true)}
+          className="rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-sm font-medium hover:opacity-90 transition-opacity"
+        >
+          + 유저 등록
+        </button>
+      </div>
+
       <div className="overflow-x-auto rounded-lg border border-border">
         <table className="w-full text-sm">
           <thead className="bg-muted/50 text-left">
@@ -76,6 +101,13 @@ export function UserTable() {
                         롤 변경
                       </button>
                       <ActiveToggle userId={u.id} active={u.active} />
+                      <button
+                        type="button"
+                        onClick={() => setDeleteTarget(u)}
+                        className="rounded-md border border-destructive/50 px-2.5 py-1 text-xs text-destructive hover:bg-destructive/10"
+                      >
+                        삭제
+                      </button>
                     </div>
                   </Td>
                 </tr>
@@ -103,6 +135,19 @@ export function UserTable() {
       </div>
 
       <RoleChangeDialog user={editingUser} onClose={() => setEditingUser(null)} />
+
+      <CreateUserDialog open={createOpen} onClose={() => setCreateOpen(false)} />
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title={`'${deleteTarget?.username}' 유저를 삭제하시겠습니까?`}
+        description="삭제된 유저는 복구할 수 없습니다."
+        variant="destructive"
+        confirmText="삭제"
+        loading={deleteMutation.isPending}
+        onConfirm={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

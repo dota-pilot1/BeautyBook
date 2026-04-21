@@ -7,6 +7,14 @@ export type RoleSummary = {
 export type Role = RoleSummary & {
   description?: string | null;
   systemRole: boolean;
+  permissions?: PermissionSummary[];
+};
+
+export type PermissionSummary = {
+  id: number;
+  code: string;
+  name: string;
+  category: string;
 };
 
 export type User = {

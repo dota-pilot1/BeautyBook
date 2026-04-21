@@ -7,7 +7,7 @@ export default function RegisterPage() {
         <div className="space-y-2 text-center">
           <h1 className="text-2xl font-bold">회원가입</h1>
           <p className="text-sm text-muted-foreground">
-            Twilio Callcenter 계정을 생성합니다.
+            BeautyBook 계정을 생성합니다.
           </p>
         </div>
         <SignupForm />
