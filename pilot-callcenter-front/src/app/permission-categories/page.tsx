@@ -6,7 +6,7 @@ import { PermissionCategoryTable } from "@/features/permission-management/Permis
 export default function PermissionCategoriesPage() {
   return (
     <RequireAuth>
-      <main className="mx-auto max-w-7xl px-2 py-8">
+      <main className="w-full px-4 py-4">
         <header className="mb-6">
           <h1 className="text-2xl font-bold tracking-tight">권한 카테고리 관리</h1>
           <p className="text-sm text-muted-foreground mt-1">
