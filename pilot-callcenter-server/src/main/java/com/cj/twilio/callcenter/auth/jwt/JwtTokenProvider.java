@@ -1,6 +1,5 @@
 package com.cj.twilio.callcenter.auth.jwt;
 
-import com.cj.twilio.callcenter.user.domain.UserRole;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.stereotype.Component;
@@ -24,14 +23,14 @@ public class JwtTokenProvider {
         this.key = Keys.hmacShaKeyFor(bytes);
     }
 
-    public String generateAccessToken(Long userId, String email, String username, UserRole role) {
+    public String generateAccessToken(Long userId, String email, String username, String roleCode) {
         Date now = new Date();
         return Jwts.builder()
                 .issuer(props.issuer())
                 .subject(String.valueOf(userId))
                 .claim("email", email)
                 .claim("username", username)
-                .claim("role", role.name())
+                .claim("role", roleCode)
                 .claim("type", TokenType.ACCESS.name())
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + props.accessTokenExpirationMs()))

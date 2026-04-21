@@ -1,7 +1,6 @@
 import { z } from "zod";
 
-const PASSWORD_REGEX =
-  /^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?]).{8,100}$/;
+const PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*\d).{8,100}$/;
 
 export const signupSchema = z
   .object({
@@ -14,7 +13,7 @@ export const signupSchema = z
     password: z
       .string()
       .min(1, "비밀번호를 입력해주세요.")
-      .regex(PASSWORD_REGEX, "비밀번호는 영문/숫자/특수문자를 포함한 8자 이상이어야 합니다."),
+      .regex(PASSWORD_REGEX, "비밀번호는 영문과 숫자를 포함한 8자 이상이어야 합니다."),
 
     passwordConfirm: z.string().min(1, "비밀번호 확인을 입력해주세요."),
 

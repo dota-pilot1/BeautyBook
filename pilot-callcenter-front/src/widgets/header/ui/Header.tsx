@@ -21,12 +21,20 @@ export function Header() {
             Twilio Callcenter
           </Link>
           {status === "authenticated" && (
-            <Link
-              href="/dashboard"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              대시보드
-            </Link>
+            <>
+              <Link
+                href="/dashboard"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                대시보드
+              </Link>
+              <Link
+                href="/users"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                유저 관리
+              </Link>
+            </>
           )}
         </nav>
 

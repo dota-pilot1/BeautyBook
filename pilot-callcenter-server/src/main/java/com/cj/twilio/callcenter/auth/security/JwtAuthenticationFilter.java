@@ -2,7 +2,6 @@ package com.cj.twilio.callcenter.auth.security;
 
 import com.cj.twilio.callcenter.auth.jwt.JwtTokenProvider;
 import com.cj.twilio.callcenter.auth.jwt.TokenType;
-import com.cj.twilio.callcenter.user.domain.UserRole;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
@@ -40,7 +39,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             jwtTokenProvider.getUserId(claims),
                             jwtTokenProvider.getEmail(claims),
                             jwtTokenProvider.getUsername(claims),
-                            UserRole.valueOf(jwtTokenProvider.getRole(claims))
+                            jwtTokenProvider.getRole(claims)
                     );
                     UsernamePasswordAuthenticationToken auth =
                             new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());

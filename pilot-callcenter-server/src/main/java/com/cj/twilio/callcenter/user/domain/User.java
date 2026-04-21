@@ -1,5 +1,6 @@
 package com.cj.twilio.callcenter.user.domain;
 
+import com.cj.twilio.callcenter.role.domain.Role;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -28,9 +29,9 @@ public class User {
     @Column(nullable = false, length = 50)
     private String username;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private UserRole role;
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "role_id", nullable = false)
+    private Role role;
 
     @Column(nullable = false)
     private boolean active;
@@ -43,16 +44,23 @@ public class User {
     @Column(nullable = false)
     private Instant updatedAt;
 
-    public static User createNewUser(String email, String passwordHash, String username) {
+    public static User createNewUser(String email, String passwordHash, String username, Role defaultRole) {
         User u = new User();
         u.email = email;
         u.passwordHash = passwordHash;
         u.username = username;
-        u.role = UserRole.ROLE_USER;
+        u.role = defaultRole;
         u.active = true;
         return u;
     }
 
     public void deactivate() { this.active = false; }
     public void activate()   { this.active = true; }
+    public void changeRole(Role newRole) { this.role = newRole; }
+    public void toggleActive() { this.active = !this.active; }
+
+    public void updateProfile(String email, String username) {
+        this.email = email;
+        this.username = username;
+    }
 }

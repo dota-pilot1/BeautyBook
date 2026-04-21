@@ -1,7 +1,10 @@
 package com.cj.twilio.callcenter.user.presentation;
 
 import com.cj.twilio.callcenter.auth.security.UserPrincipal;
+import com.cj.twilio.callcenter.common.exception.BusinessException;
+import com.cj.twilio.callcenter.common.exception.ErrorCode;
 import com.cj.twilio.callcenter.user.application.AuthService;
+import com.cj.twilio.callcenter.user.infrastructure.UserRepository;
 import com.cj.twilio.callcenter.user.presentation.dto.*;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
@@ -19,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final UserRepository userRepository;
 
     @PostMapping("/signup")
     public ResponseEntity<SignupResponse> signup(@Valid @RequestBody SignupRequest req) {
@@ -50,11 +54,9 @@ public class AuthController {
 
     @GetMapping("/me")
     public ResponseEntity<UserSummary> me(@AuthenticationPrincipal UserPrincipal principal) {
-        return ResponseEntity.ok(new UserSummary(
-                principal.getId(),
-                principal.getEmail(),
-                principal.getUsername(),
-                principal.getRole().name()
-        ));
+        return userRepository.findById(principal.getId())
+                .map(UserSummary::from)
+                .map(ResponseEntity::ok)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
     }
 }

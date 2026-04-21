@@ -10,11 +10,11 @@ public record SignupRequest(
         @Size(max = 255, message = "이메일은 255자 이하여야 합니다.")
         String email,
 
-        @Schema(example = "password123!@")
+        @Schema(example = "password123")
         @NotBlank(message = "비밀번호를 입력해주세요.")
         @Pattern(
-                regexp = "^(?=.*[A-Za-z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?]).{8,100}$",
-                message = "비밀번호는 영문/숫자/특수문자를 포함한 8자 이상이어야 합니다."
+                regexp = "^(?=.*[A-Za-z])(?=.*\\d).{8,100}$",
+                message = "비밀번호는 영문과 숫자를 포함한 8자 이상이어야 합니다."
         )
         String password,
 

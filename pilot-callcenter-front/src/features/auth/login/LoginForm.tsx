@@ -25,7 +25,7 @@ export function LoginForm() {
     mode: "onBlur",
     defaultValues: {
       email: "terecal@daum.net",
-      password: "password123!@",
+      password: "password123",
     },
   });
 

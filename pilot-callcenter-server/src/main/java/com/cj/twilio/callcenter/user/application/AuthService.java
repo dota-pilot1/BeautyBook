@@ -9,6 +9,9 @@ import com.cj.twilio.callcenter.common.exception.BusinessException;
 import com.cj.twilio.callcenter.common.exception.DuplicateEmailException;
 import com.cj.twilio.callcenter.common.exception.ErrorCode;
 import com.cj.twilio.callcenter.common.exception.InvalidRefreshTokenException;
+import com.cj.twilio.callcenter.config.RoleSeeder;
+import com.cj.twilio.callcenter.role.domain.Role;
+import com.cj.twilio.callcenter.role.infrastructure.RoleRepository;
 import com.cj.twilio.callcenter.user.domain.User;
 import com.cj.twilio.callcenter.user.infrastructure.UserRepository;
 import com.cj.twilio.callcenter.user.presentation.dto.*;
@@ -30,6 +33,7 @@ import java.time.Instant;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
@@ -40,8 +44,10 @@ public class AuthService {
         if (userRepository.existsByEmail(req.email())) {
             throw new DuplicateEmailException();
         }
+        Role defaultRole = roleRepository.findByCode(RoleSeeder.ROLE_USER)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ROLE_NOT_FOUND));
         String hash = passwordEncoder.encode(req.password());
-        User saved = userRepository.save(User.createNewUser(req.email(), hash, req.username()));
+        User saved = userRepository.save(User.createNewUser(req.email(), hash, req.username(), defaultRole));
         return SignupResponse.from(saved);
     }
 
@@ -62,8 +68,8 @@ public class AuthService {
         }
         UserPrincipal p = (UserPrincipal) auth.getPrincipal();
         if (!p.isEnabled()) throw new BusinessException(ErrorCode.ACCOUNT_INACTIVE);
-        return issueTokens(p.getId(), p.getEmail(), p.getUsername(),
-                userRepository.findById(p.getId()).orElseThrow());
+        User user = userRepository.findById(p.getId()).orElseThrow();
+        return issueTokens(user);
     }
 
     @Transactional
@@ -91,7 +97,7 @@ public class AuthService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
         if (!user.isActive()) throw new BusinessException(ErrorCode.ACCOUNT_INACTIVE);
 
-        return issueTokens(user.getId(), user.getEmail(), user.getUsername(), user);
+        return issueTokens(user);
     }
 
     @Transactional
@@ -99,14 +105,14 @@ public class AuthService {
         refreshTokenRepository.deleteByUserId(userId);
     }
 
-    private TokenResponse issueTokens(Long userId, String email, String username, User user) {
-        String access  = jwtTokenProvider.generateAccessToken(userId, email, username, user.getRole());
-        String refresh = jwtTokenProvider.generateRefreshToken(userId);
+    private TokenResponse issueTokens(User user) {
+        String access  = jwtTokenProvider.generateAccessToken(user.getId(), user.getEmail(), user.getUsername(), user.getRole().getCode());
+        String refresh = jwtTokenProvider.generateRefreshToken(user.getId());
         Instant expiresAt = Instant.now().plusMillis(jwtTokenProvider.getRefreshTokenExpirationMs());
 
-        refreshTokenRepository.findByUserId(userId).ifPresentOrElse(
+        refreshTokenRepository.findByUserId(user.getId()).ifPresentOrElse(
                 rt -> rt.rotate(refresh, expiresAt),
-                () -> refreshTokenRepository.save(RefreshToken.create(userId, refresh, expiresAt))
+                () -> refreshTokenRepository.save(RefreshToken.create(user.getId(), refresh, expiresAt))
         );
 
         long expiresInSec = jwtTokenProvider.getAccessTokenExpirationMs() / 1000;

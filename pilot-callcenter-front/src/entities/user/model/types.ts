@@ -1,10 +1,19 @@
-export type UserRole = "ROLE_USER" | "ROLE_ADMIN";
+export type RoleSummary = {
+  id: number;
+  code: string;
+  name: string;
+};
+
+export type Role = RoleSummary & {
+  description?: string | null;
+  systemRole: boolean;
+};
 
 export type User = {
   id: number;
   email: string;
   username: string;
-  role: UserRole;
+  role: RoleSummary;
   createdAt?: string;
 };
 
@@ -26,4 +35,21 @@ export type TokenResponse = {
   refreshToken: string;
   accessTokenExpiresInSec: number;
   user: User;
+};
+
+export type UserListItem = {
+  id: number;
+  email: string;
+  username: string;
+  role: RoleSummary;
+  active: boolean;
+  createdAt: string;
+};
+
+export type UserPage = {
+  content: UserListItem[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
 };
