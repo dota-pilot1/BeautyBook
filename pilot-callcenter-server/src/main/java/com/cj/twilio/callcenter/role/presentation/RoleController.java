@@ -1,5 +1,6 @@
 package com.cj.twilio.callcenter.role.presentation;
 
+import com.cj.twilio.callcenter.permission.presentation.dto.PermissionSummary;
 import com.cj.twilio.callcenter.role.application.RoleService;
 import com.cj.twilio.callcenter.role.presentation.dto.CreateRoleRequest;
 import com.cj.twilio.callcenter.role.presentation.dto.RoleResponse;
@@ -29,9 +30,9 @@ public class RoleController {
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "롤 상세 조회")
+    @Operation(summary = "롤 상세 조회 (권한 포함)")
     public RoleResponse get(@PathVariable Long id) {
-        return RoleResponse.from(roleService.getById(id));
+        return RoleResponse.from(roleService.getRoleWithPermissions(id));
     }
 
     @PostMapping
@@ -52,5 +53,20 @@ public class RoleController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         roleService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/permissions")
+    @Operation(summary = "롤에 할당된 권한 목록")
+    public List<PermissionSummary> getPermissions(@PathVariable Long id) {
+        return roleService.getRoleWithPermissions(id).getPermissions().stream()
+                .map(PermissionSummary::from)
+                .toList();
+    }
+
+    @PutMapping("/{id}/permissions")
+    @Operation(summary = "롤 권한 일괄 교체")
+    public RoleResponse setPermissions(@PathVariable Long id,
+                                       @RequestBody List<Long> permissionIds) {
+        return RoleResponse.from(roleService.setPermissions(id, permissionIds));
     }
 }
