@@ -5,16 +5,14 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { roleApi } from "@/entities/user/api/roleApi";
 import { permissionApi } from "@/entities/permission/api/permissionApi";
 import { toast, toastError } from "@/shared/lib/toast";
-import { RoleFormDialog } from "./RoleFormDialog";
-import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
+import { RoleManageDialog } from "./RoleManageDialog";
 import type { Role } from "@/entities/user/model/types";
 import type { Permission } from "@/entities/permission/model/types";
 
 export function RolePermissionManager() {
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [checkedIds, setCheckedIds] = useState<Set<number>>(new Set());
-  const [roleForm, setRoleForm] = useState<Role | null | "new">(null);
-  const [deleteTarget, setDeleteTarget] = useState<Role | null>(null);
+  const [manageOpen, setManageOpen] = useState(false);
   const qc = useQueryClient();
 
   const { data: roles = [], isLoading: rolesLoading } = useQuery({
@@ -46,17 +44,6 @@ export function RolePermissionManager() {
       qc.invalidateQueries({ queryKey: ["role-permissions", selectedRole?.id] });
     },
     onError: (e) => toastError(e, "저장에 실패했습니다."),
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: number) => roleApi.delete(id),
-    onSuccess: () => {
-      toast.success("역할이 삭제되었습니다.");
-      qc.invalidateQueries({ queryKey: ["roles"] });
-      if (selectedRole?.id === deleteTarget?.id) setSelectedRole(null);
-      setDeleteTarget(null);
-    },
-    onError: (e) => toastError(e, "삭제에 실패했습니다."),
   });
 
   const toggle = (id: number) => {
@@ -93,13 +80,17 @@ export function RolePermissionManager() {
       <div className="flex gap-0 rounded-lg border border-border overflow-hidden min-h-[640px]">
         {/* Left: Role list */}
         <aside className="w-56 shrink-0 border-r border-border bg-muted/30 flex flex-col">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <div className="flex h-12 items-center justify-between px-4 border-b border-border shrink-0">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">역할 목록</p>
             <button
-              onClick={() => setRoleForm("new")}
-              className="text-xs rounded-md px-2 py-1 bg-primary text-primary-foreground hover:opacity-90 transition-opacity font-medium"
+              onClick={() => setManageOpen(true)}
+              title="역할 관리"
+              className="rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             >
-              + 추가
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
             </button>
           </div>
           {rolesLoading ? (
@@ -109,51 +100,23 @@ export function RolePermissionManager() {
               {roles.map((role) => {
                 const isSelected = selectedRole?.id === role.id;
                 return (
-                  <li key={role.id} className={`group border-b border-border/50 last:border-0 ${isSelected ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}>
-                    <div className="flex items-center justify-between px-3 py-2.5">
-                      <button
-                        onClick={() => setSelectedRole(role)}
-                        className="flex-1 text-left min-w-0"
-                      >
-                        <div className="flex items-center gap-1.5">
-                          <span className="block text-sm truncate font-medium">{role.name}</span>
-                          {role.systemRole && (
-                            <span className={`shrink-0 text-[9px] font-bold px-1 py-px rounded ${isSelected ? "bg-primary-foreground/20 text-primary-foreground/80" : "bg-muted-foreground/20 text-muted-foreground"}`}>
-                              S
-                            </span>
-                          )}
-                        </div>
-                        <span className={`block text-xs font-mono truncate mt-0.5 ${isSelected ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
-                          {role.code}
-                        </span>
-                      </button>
-                      <div className={`flex gap-0.5 shrink-0 ml-1 ${isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"} transition-opacity`}>
-                        {/* 수정 아이콘 */}
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setRoleForm(role); }}
-                          title="수정"
-                          className={`rounded p-1 ${isSelected ? "hover:bg-primary-foreground/10 text-primary-foreground/80" : "hover:bg-accent text-muted-foreground hover:text-foreground"}`}
-                        >
-                          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 012.828 0l.172.172a2 2 0 010 2.828L12 16H9v-3z" />
-                          </svg>
-                        </button>
-                        {/* 삭제 아이콘 — 시스템 롤은 숨김 */}
-                        {!role.systemRole ? (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setDeleteTarget(role); }}
-                            title="삭제"
-                            className={`rounded p-1 ${isSelected ? "hover:bg-red-500/20 text-red-300" : "hover:bg-destructive/10 text-destructive/60 hover:text-destructive"}`}
-                          >
-                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m-7 0a1 1 0 011-1h4a1 1 0 011 1m-7 0H5m14 0h-2" />
-                            </svg>
-                          </button>
-                        ) : (
-                          <span className="w-[26px]" />
+                  <li key={role.id} className={`border-b border-border/50 last:border-0 ${isSelected ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}>
+                    <button
+                      onClick={() => setSelectedRole(role)}
+                      className="w-full text-left px-4 py-2.5"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-medium truncate">{role.name}</span>
+                        {role.systemRole && (
+                          <span className={`shrink-0 text-[9px] font-bold px-1 py-px rounded ${isSelected ? "bg-primary-foreground/20 text-primary-foreground/80" : "bg-muted-foreground/20 text-muted-foreground"}`}>
+                            S
+                          </span>
                         )}
                       </div>
-                    </div>
+                      <span className={`block text-xs font-mono truncate mt-0.5 ${isSelected ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                        {role.code}
+                      </span>
+                    </button>
                   </li>
                 );
               })}
@@ -169,7 +132,7 @@ export function RolePermissionManager() {
             </div>
           ) : (
             <>
-              <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <div className="flex h-12 items-center justify-between px-4 border-b border-border shrink-0">
                 <div>
                   <span className="font-semibold">{selectedRole.name}</span>
                   <span className="ml-2 font-mono text-xs text-muted-foreground">{selectedRole.code}</span>
@@ -237,21 +200,10 @@ export function RolePermissionManager() {
         </div>
       </div>
 
-      <RoleFormDialog
-        open={roleForm !== null}
-        role={roleForm === "new" ? null : roleForm}
-        onClose={() => setRoleForm(null)}
-      />
-
-      <ConfirmDialog
-        open={!!deleteTarget}
-        title={`'${deleteTarget?.name}' 역할을 삭제하시겠습니까?`}
-        description="해당 역할을 가진 유저의 역할도 초기화될 수 있습니다."
-        variant="destructive"
-        confirmText="삭제"
-        loading={deleteMutation.isPending}
-        onConfirm={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
-        onCancel={() => setDeleteTarget(null)}
+      <RoleManageDialog
+        open={manageOpen}
+        roles={roles}
+        onClose={() => setManageOpen(false)}
       />
     </>
   );
