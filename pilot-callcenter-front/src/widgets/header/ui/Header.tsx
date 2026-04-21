@@ -118,6 +118,55 @@ function AdminDropdown() {
   );
 }
 
+function UserDropdown({ displayName, user }: { displayName: string; user: NonNullable<ReturnType<typeof useAuth>["user"]> }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative hidden sm:block">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-2 rounded-full border border-border/60 bg-muted/50 px-3 py-1.5 hover:bg-muted transition-colors"
+      >
+        <UserAvatar name={displayName} />
+        <span className="text-sm font-medium leading-none text-foreground">{displayName}</span>
+        {user.role && (
+          <>
+            <span className="h-3.5 w-px bg-border/80" />
+            <RoleBadge role={user.role} />
+          </>
+        )}
+        <svg
+          className={`h-3 w-3 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
+          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full mt-2 w-44 rounded-lg border border-border bg-background shadow-lg z-50 py-1 overflow-hidden">
+          <Link
+            href="/profile"
+            onClick={() => setOpen(false)}
+            className="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          >
+            내 프로필
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Header() {
   const { status, user } = useAuth();
   const router = useRouter();
@@ -154,19 +203,7 @@ export function Header() {
         <div className="flex items-center gap-2">
           {status === "authenticated" ? (
             <>
-              {/* User info pill */}
-              <div className="hidden sm:flex items-center gap-2 rounded-full border border-border/60 bg-muted/50 px-3 py-1.5">
-                <UserAvatar name={displayName} />
-                <span className="text-sm font-medium leading-none text-foreground">
-                  {displayName}
-                </span>
-                {user?.role && (
-                  <>
-                    <span className="h-3.5 w-px bg-border/80" />
-                    <RoleBadge role={user.role} />
-                  </>
-                )}
-              </div>
+              {user && <UserDropdown displayName={displayName} user={user} />}
               {/* Logout — ghost */}
               <button
                 onClick={handleLogout}

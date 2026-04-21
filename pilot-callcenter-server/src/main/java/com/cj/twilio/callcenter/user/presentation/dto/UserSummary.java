@@ -3,8 +3,12 @@ package com.cj.twilio.callcenter.user.presentation.dto;
 import com.cj.twilio.callcenter.role.presentation.dto.RoleSummary;
 import com.cj.twilio.callcenter.user.domain.User;
 
-public record UserSummary(Long id, String email, String username, RoleSummary role) {
+import java.util.List;
+
+public record UserSummary(Long id, String email, String username, RoleSummary role, List<String> permissions) {
     public static UserSummary from(User u) {
-        return new UserSummary(u.getId(), u.getEmail(), u.getUsername(), RoleSummary.from(u.getRole()));
+        List<String> permCodes = u.getRole().getPermissions()
+                .stream().map(p -> p.getCode()).toList();
+        return new UserSummary(u.getId(), u.getEmail(), u.getUsername(), RoleSummary.from(u.getRole()), permCodes);
     }
 }

@@ -22,6 +22,7 @@ export type User = {
   email: string;
   username: string;
   role: RoleSummary;
+  permissions: string[];
   createdAt?: string;
 };
 

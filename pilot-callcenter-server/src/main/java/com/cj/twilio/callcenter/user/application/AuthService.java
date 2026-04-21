@@ -27,6 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -106,7 +107,9 @@ public class AuthService {
     }
 
     private TokenResponse issueTokens(User user) {
-        String access  = jwtTokenProvider.generateAccessToken(user.getId(), user.getEmail(), user.getUsername(), user.getRole().getCode());
+        List<String> permCodes = user.getRole().getPermissions()
+                .stream().map(p -> p.getCode()).toList();
+        String access  = jwtTokenProvider.generateAccessToken(user.getId(), user.getEmail(), user.getUsername(), user.getRole().getCode(), permCodes);
         String refresh = jwtTokenProvider.generateRefreshToken(user.getId());
         Instant expiresAt = Instant.now().plusMillis(jwtTokenProvider.getRefreshTokenExpirationMs());
 
