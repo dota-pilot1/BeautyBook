@@ -6,6 +6,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -17,28 +18,33 @@ public class UserPrincipal implements UserDetails {
     private final String username;
     private final String passwordHash;
     private final String roleCode;
+    private final List<String> permissions;
     private final boolean active;
 
-    private UserPrincipal(Long id, String email, String username, String passwordHash, String roleCode, boolean active) {
+    private UserPrincipal(Long id, String email, String username, String passwordHash, String roleCode, List<String> permissions, boolean active) {
         this.id = id;
         this.email = email;
         this.username = username;
         this.passwordHash = passwordHash;
         this.roleCode = roleCode;
+        this.permissions = permissions;
         this.active = active;
     }
 
     public static UserPrincipal fromEntity(User u) {
-        return new UserPrincipal(u.getId(), u.getEmail(), u.getUsername(), u.getPasswordHash(), u.getRole().getCode(), u.isActive());
+        return new UserPrincipal(u.getId(), u.getEmail(), u.getUsername(), u.getPasswordHash(), u.getRole().getCode(), List.of(), u.isActive());
     }
 
-    public static UserPrincipal fromClaims(Long id, String email, String username, String roleCode) {
-        return new UserPrincipal(id, email, username, null, roleCode, true);
+    public static UserPrincipal fromClaims(Long id, String email, String username, String roleCode, List<String> permissions) {
+        return new UserPrincipal(id, email, username, null, roleCode, permissions, true);
     }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority(roleCode));
+        List<GrantedAuthority> authorities = new ArrayList<>();
+        authorities.add(new SimpleGrantedAuthority(roleCode));
+        permissions.forEach(p -> authorities.add(new SimpleGrantedAuthority(p)));
+        return authorities;
     }
 
     @Override public String getPassword()   { return passwordHash; }
