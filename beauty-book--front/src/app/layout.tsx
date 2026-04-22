@@ -5,6 +5,9 @@ import "./globals.css";
 import { QueryProvider } from "./QueryProvider";
 import { AuthInitializer } from "./AuthInitializer";
 import { Header } from "@/widgets/header";
+import { ThemeInitializer } from "@/shared/ui/theme/ThemeInitializer";
+
+const themeNoFlashScript = `(function(){try{var t=localStorage.getItem("theme-color");if(t&&t!=="default")document.documentElement.setAttribute("data-theme",t);}catch(e){}})();`;
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,9 +31,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeNoFlashScript }} />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <ThemeInitializer />
         <QueryProvider>
           <AuthInitializer>
             <Header />

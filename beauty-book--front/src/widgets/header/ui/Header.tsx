@@ -6,6 +6,7 @@ import { useState, useRef, useEffect } from "react";
 import { useAuth, authActions } from "@/entities/user/model/authStore";
 import { RoleBadge } from "@/features/user-management/RoleBadge";
 import { NavLink } from "@/shared/ui/NavLink";
+import { ThemeSwitcher } from "@/shared/ui/theme/ThemeSwitcher";
 
 function UserAvatar({ name }: { name: string }) {
   const initials = (name ?? "?").slice(0, 2).toUpperCase();
@@ -176,6 +177,7 @@ export function Header() {
 
         {/* Right: user info + actions */}
         <div className="flex items-center gap-2">
+          <ThemeSwitcher />
           {status === "authenticated" ? (
             <>
               {user && <UserDropdown displayName={displayName} user={user} />}
