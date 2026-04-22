@@ -1,13 +1,19 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { AlertCircle, LogIn } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { loginSchema, type LoginFormValues } from "@/shared/lib/validation/auth.schema";
 import { authActions } from "@/entities/user/model/authStore";
 import { getApiError } from "@/shared/api/errors";
+import { FormField } from "@/shared/ui/FormField";
+import { TextInput } from "@/shared/ui/TextInput";
+import { PasswordInput } from "@/shared/ui/PasswordInput";
 
 type LoginFormProps = {
   nextPath?: string;
@@ -15,6 +21,9 @@ type LoginFormProps = {
 
 export function LoginForm({ nextPath }: LoginFormProps) {
   const router = useRouter();
+  const { t } = useTranslation("auth");
+  const [formError, setFormError] = useState<string | null>(null);
+
   const safePath =
     nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//")
       ? nextPath
@@ -35,9 +44,10 @@ export function LoginForm({ nextPath }: LoginFormProps) {
   });
 
   const onSubmit = handleSubmit(async (values) => {
+    setFormError(null);
     try {
       await authActions.login(values.email, values.password);
-      toast.success("로그인되었습니다.");
+      toast.success(t("loginSuccess"));
       router.replace(safePath);
     } catch (e) {
       const apiError = getApiError(e);
@@ -46,63 +56,61 @@ export function LoginForm({ nextPath }: LoginFormProps) {
       } else if (apiError?.code === "AUTH_004") {
         setError("email", { type: "server", message: apiError.message });
       } else {
-        toast.error(apiError?.message ?? "로그인에 실패했습니다.");
+        setFormError(apiError?.message ?? t("loginFailed"));
       }
     }
   });
 
   return (
     <form onSubmit={onSubmit} className="space-y-4" noValidate>
-      <Field label="이메일" error={errors.email?.message}>
-        <input
+      {formError && (
+        <div
+          role="alert"
+          className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+        >
+          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+          <span>{formError}</span>
+        </div>
+      )}
+
+      <FormField label={t("email")} htmlFor="login-email" error={errors.email?.message}>
+        <TextInput
+          id="login-email"
           type="email"
           autoComplete="email"
+          placeholder={t("emailPlaceholder")}
+          invalid={!!errors.email}
+          aria-invalid={!!errors.email}
           {...register("email")}
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
         />
-      </Field>
+      </FormField>
 
-      <Field label="비밀번호" error={errors.password?.message}>
-        <input
-          type="password"
+      <FormField label={t("password")} htmlFor="login-password" error={errors.password?.message}>
+        <PasswordInput
+          id="login-password"
           autoComplete="current-password"
+          placeholder="••••••••"
+          invalid={!!errors.password}
+          aria-invalid={!!errors.password}
           {...register("password")}
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
         />
-      </Field>
+      </FormField>
 
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full rounded-md bg-primary text-primary-foreground py-2 text-sm font-medium disabled:opacity-60 hover:opacity-90 transition-opacity"
+        className="w-full inline-flex items-center justify-center gap-2 rounded-md bg-primary text-primary-foreground py-2.5 text-sm font-medium disabled:opacity-60 hover:opacity-90 transition-opacity"
       >
-        {isSubmitting ? "로그인 중..." : "로그인"}
+        <LogIn className="h-4 w-4" />
+        {isSubmitting ? t("signingIn") : t("signInButton")}
       </button>
 
       <p className="text-center text-sm text-muted-foreground">
-        계정이 없으신가요?{" "}
+        {t("noAccount")}{" "}
         <Link href="/register" className="underline hover:text-foreground">
-          회원가입
+          {t("signUpLink")}
         </Link>
       </p>
     </form>
-  );
-}
-
-function Field({
-  label,
-  error,
-  children,
-}: {
-  label: string;
-  error?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block space-y-1">
-      <span className="text-sm font-medium">{label}</span>
-      {children}
-      {error && <span className="block text-xs text-destructive">{error}</span>}
-    </label>
   );
 }

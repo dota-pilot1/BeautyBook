@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { LogIn, UserPlus } from "lucide-react";
 import { useAuth, authActions } from "@/entities/user/model/authStore";
 import { RoleBadge } from "@/features/user-management/RoleBadge";
 import { NavLink } from "@/shared/ui/NavLink";
@@ -200,15 +201,25 @@ export function Header() {
             <>
               <Link
                 href="/register"
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                className="flex items-center gap-2 rounded-full border border-border/60 bg-muted/50 px-3 py-1.5 text-foreground hover:bg-muted transition-colors"
               >
-                {t("register")}
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground ring-2 ring-background shadow-sm">
+                  <UserPlus className="h-3.5 w-3.5" />
+                </span>
+                <span className="hidden sm:inline text-sm font-medium leading-none">
+                  {t("register")}
+                </span>
               </Link>
               <Link
                 href="/login"
-                className="rounded-full bg-primary text-primary-foreground px-4 py-1.5 text-sm font-medium leading-none hover:opacity-90 transition-opacity"
+                className="flex items-center gap-2 rounded-full bg-primary text-primary-foreground px-3 py-1.5 hover:opacity-90 transition-opacity"
               >
-                {t("login")}
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-foreground/15 ring-2 ring-primary-foreground/10">
+                  <LogIn className="h-3.5 w-3.5" />
+                </span>
+                <span className="hidden sm:inline text-sm font-medium leading-none">
+                  {t("login")}
+                </span>
               </Link>
             </>
           ) : null}

@@ -2,39 +2,38 @@ import { z } from "zod";
 
 const PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*\d).{8,100}$/;
 
+// Messages are i18n keys in the "form" namespace. Translate at display time
+// via `t(error.message, { ns: "form" })`.
 export const signupSchema = z
   .object({
     email: z
       .string()
-      .min(1, "이메일을 입력해주세요.")
-      .max(255, "이메일은 255자 이하여야 합니다.")
-      .email("올바른 이메일 형식이 아닙니다."),
+      .min(1, "emailRequired")
+      .max(255, "emailTooLong")
+      .email("emailInvalid"),
 
     password: z
       .string()
-      .min(1, "비밀번호를 입력해주세요.")
-      .regex(PASSWORD_REGEX, "비밀번호는 영문과 숫자를 포함한 8자 이상이어야 합니다."),
+      .min(1, "passwordRequired")
+      .regex(PASSWORD_REGEX, "passwordPattern"),
 
-    passwordConfirm: z.string().min(1, "비밀번호 확인을 입력해주세요."),
+    passwordConfirm: z.string().min(1, "passwordConfirmRequired"),
 
     username: z
       .string()
-      .min(2, "사용자명은 2자 이상이어야 합니다.")
-      .max(50, "사용자명은 50자 이하여야 합니다."),
+      .min(2, "usernameTooShort")
+      .max(50, "usernameTooLong"),
   })
   .refine((data) => data.password === data.passwordConfirm, {
     path: ["passwordConfirm"],
-    message: "비밀번호가 일치하지 않습니다.",
+    message: "passwordMismatch",
   });
 
 export type SignupFormValues = z.infer<typeof signupSchema>;
 
 export const loginSchema = z.object({
-  email: z
-    .string()
-    .min(1, "이메일을 입력해주세요.")
-    .email("올바른 이메일 형식이 아닙니다."),
-  password: z.string().min(1, "비밀번호를 입력해주세요."),
+  email: z.string().min(1, "emailRequired").email("emailInvalid"),
+  password: z.string().min(1, "passwordRequired"),
 });
 
 export type LoginFormValues = z.infer<typeof loginSchema>;

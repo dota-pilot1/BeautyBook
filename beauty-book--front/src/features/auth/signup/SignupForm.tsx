@@ -1,15 +1,25 @@
 "use client";
 
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { toast } from "sonner";
+import { AlertCircle, UserPlus } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { signupSchema, type SignupFormValues } from "@/shared/lib/validation/auth.schema";
 import { authApi } from "@/entities/user/api/authApi";
 import { getApiError, getFieldErrors } from "@/shared/api/errors";
+import { FormField } from "@/shared/ui/FormField";
+import { TextInput } from "@/shared/ui/TextInput";
+import { PasswordInput } from "@/shared/ui/PasswordInput";
 
 export function SignupForm() {
   const router = useRouter();
+  const { t } = useTranslation("auth");
+  const [formError, setFormError] = useState<string | null>(null);
+
   const {
     register,
     handleSubmit,
@@ -21,10 +31,11 @@ export function SignupForm() {
   });
 
   const onSubmit = handleSubmit(async (values) => {
+    setFormError(null);
     try {
       const { passwordConfirm: _, ...payload } = values;
       await authApi.signup(payload);
-      toast.success("회원가입이 완료되었습니다. 로그인해주세요.");
+      toast.success(t("signupSuccess"));
       router.push("/login");
     } catch (e) {
       const apiError = getApiError(e);
@@ -38,84 +49,96 @@ export function SignupForm() {
         if (apiError.code === "AUTH_001") {
           setError("email", { type: "server", message: apiError.message });
         } else {
-          toast.error(apiError.message);
+          setFormError(apiError.message);
         }
       } else if (!apiError) {
-        toast.error("요청 중 오류가 발생했습니다.");
+        setFormError(t("signupFailed"));
       }
     }
   });
 
   return (
     <form onSubmit={onSubmit} className="space-y-4" noValidate>
-      <Field label="이메일" error={errors.email?.message}>
-        <input
+      {formError && (
+        <div
+          role="alert"
+          className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+        >
+          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+          <span>{formError}</span>
+        </div>
+      )}
+
+      <FormField label={t("email")} htmlFor="signup-email" error={errors.email?.message}>
+        <TextInput
+          id="signup-email"
           type="email"
           autoComplete="email"
+          placeholder={t("emailPlaceholder")}
+          invalid={!!errors.email}
+          aria-invalid={!!errors.email}
           {...register("email")}
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
         />
-      </Field>
+      </FormField>
 
-      <Field label="사용자명" error={errors.username?.message}>
-        <input
+      <FormField label={t("username")} htmlFor="signup-username" error={errors.username?.message}>
+        <TextInput
+          id="signup-username"
           type="text"
           autoComplete="name"
+          placeholder={t("usernamePlaceholder")}
+          invalid={!!errors.username}
+          aria-invalid={!!errors.username}
           {...register("username")}
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
         />
-      </Field>
+      </FormField>
 
-      <Field label="비밀번호" error={errors.password?.message}>
-        <input
-          type="password"
+      <FormField
+        label={t("password")}
+        htmlFor="signup-password"
+        error={errors.password?.message}
+        hint={errors.password ? undefined : t("passwordPlaceholder")}
+      >
+        <PasswordInput
+          id="signup-password"
           autoComplete="new-password"
+          placeholder="••••••••"
+          invalid={!!errors.password}
+          aria-invalid={!!errors.password}
           {...register("password")}
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
         />
-      </Field>
+      </FormField>
 
-      <Field label="비밀번호 확인" error={errors.passwordConfirm?.message}>
-        <input
-          type="password"
+      <FormField
+        label={t("passwordConfirm")}
+        htmlFor="signup-password-confirm"
+        error={errors.passwordConfirm?.message}
+      >
+        <PasswordInput
+          id="signup-password-confirm"
           autoComplete="new-password"
+          placeholder={t("passwordConfirmPlaceholder")}
+          invalid={!!errors.passwordConfirm}
+          aria-invalid={!!errors.passwordConfirm}
           {...register("passwordConfirm")}
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
         />
-      </Field>
+      </FormField>
 
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full rounded-md bg-primary text-primary-foreground py-2 text-sm font-medium disabled:opacity-60 hover:opacity-90 transition-opacity"
+        className="w-full inline-flex items-center justify-center gap-2 rounded-md bg-primary text-primary-foreground py-2.5 text-sm font-medium disabled:opacity-60 hover:opacity-90 transition-opacity"
       >
-        {isSubmitting ? "가입 중..." : "가입하기"}
+        <UserPlus className="h-4 w-4" />
+        {isSubmitting ? t("signingUp") : t("signUpButton")}
       </button>
 
       <p className="text-center text-sm text-muted-foreground">
-        이미 계정이 있으신가요?{" "}
-        <a href="/login" className="underline hover:text-foreground">
-          로그인
-        </a>
+        {t("haveAccount")}{" "}
+        <Link href="/login" className="underline hover:text-foreground">
+          {t("signInLink")}
+        </Link>
       </p>
     </form>
-  );
-}
-
-function Field({
-  label,
-  error,
-  children,
-}: {
-  label: string;
-  error?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block space-y-1">
-      <span className="text-sm font-medium">{label}</span>
-      {children}
-      {error && <span className="block text-xs text-destructive">{error}</span>}
-    </label>
   );
 }
