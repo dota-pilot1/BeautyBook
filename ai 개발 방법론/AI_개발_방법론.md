@@ -128,7 +128,7 @@ AI 아웃풋을 채택하기 전 스스로 판단할 수 있어야 한다:
 이 방법론의 실증 예시로 제작된 보일러플레이트.
 
 - 배포: https://hibot-docu.com/?categoryId=%EC%8A%A4%ED%94%84%EB%A7%81-%EC%8B%9C%ED%81%90%EB%A6%AC%ED%8B%B0-843654&view=prototype-detail&prototypeId=prototype-90971
-- 구조 평가 및 보완 항목: [docs-for-보왆해야할것들/보완해야할것들.md](../docs-for-보왆해야할것들/보완해야할것들.md)
+- 구조 평가 및 보완 항목: [docs-for-보완해야할것들/보완해야할것들.md](../docs-for-보왆해야할것들/보완해야할것들.md)
 
 **포함된 검증 구조:**
 - Spring Boot DDD 4-레이어 (presentation → application → domain → infrastructure)
