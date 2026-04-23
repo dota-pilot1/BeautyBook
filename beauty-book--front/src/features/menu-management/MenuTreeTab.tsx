@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   DndContext, closestCenter, PointerSensor, KeyboardSensor,
@@ -329,11 +329,14 @@ export function MenuTreeTab() {
   const [localFlat, setLocalFlat] = useState<MenuRecord[] | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
 
-  const { data: serverMenus = [], isLoading } = useQuery({
+  const { data: serverMenus = [], isLoading } = useQuery<MenuRecord[]>({
     queryKey: ["menus"],
     queryFn: menuApi.getAll,
-    onSuccess: (data: MenuRecord[]) => setLocalFlat(data),
-  } as any);
+  });
+
+  useEffect(() => {
+    setLocalFlat(serverMenus);
+  }, [serverMenus]);
 
   const flat: MenuRecord[] = localFlat ?? serverMenus;
   const tree = useMemo(() => buildTree(flat), [flat]);

@@ -61,7 +61,14 @@ export function RolePermissionDialog({ role, onClose }: Props) {
   const isLoading = allLoading || roleLoading;
 
   const grouped = allPermissions?.reduce<Record<string, Permission[]>>((acc, p) => {
-    (acc[p.category] = acc[p.category] ?? []).push(p);
+    const categoryCode = p.category?.code ?? "UNCATEGORIZED";
+    (acc[categoryCode] = acc[categoryCode] ?? []).push(p);
+    return acc;
+  }, {});
+
+  const categoryLabels = allPermissions?.reduce<Record<string, string>>((acc, p) => {
+    const categoryCode = p.category?.code ?? "UNCATEGORIZED";
+    acc[categoryCode] = p.category?.name ?? "미분류";
     return acc;
   }, {});
 
@@ -93,7 +100,7 @@ export function RolePermissionDialog({ role, onClose }: Props) {
             {orderedCategories.map((category) => (
               <div key={category}>
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                  {category}
+                  {categoryLabels?.[category] ?? category}
                 </p>
                 <div className="space-y-1">
                   {grouped![category].map((p) => (
