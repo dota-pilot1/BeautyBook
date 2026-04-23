@@ -5,11 +5,108 @@ import { useRouter, usePathname } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { LogIn, UserPlus } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth, authActions } from "@/entities/user/model/authStore";
+import { menuApi } from "@/entities/menu/api/menuApi";
+import type { MenuRecord, MenuItem } from "@/entities/menu/model/types";
 import { RoleBadge } from "@/features/user-management/RoleBadge";
 import { NavLink } from "@/shared/ui/NavLink";
 import { ThemeSwitcher } from "@/shared/ui/theme/ThemeSwitcher";
 import { LanguageSelect } from "@/shared/ui/LanguageSelect";
+
+function buildTree(flat: MenuRecord[], userRole: string | null): MenuItem[] {
+  const visible = flat.filter(
+    (m) => m.visible && (!m.requiredRole || m.requiredRole === userRole)
+  );
+  const map = new Map<number, MenuItem>();
+  visible.forEach((m) => map.set(m.id, { ...m, children: [] }));
+
+  const roots: MenuItem[] = [];
+  map.forEach((item) => {
+    if (item.parentId === null) {
+      roots.push(item);
+    } else {
+      map.get(item.parentId)?.children.push(item);
+    }
+  });
+
+  const sort = (items: MenuItem[]) =>
+    items.sort((a, b) => a.displayOrder - b.displayOrder);
+
+  map.forEach((item) => sort(item.children));
+  return sort(roots);
+}
+
+function DropdownMenu({ item }: { item: MenuItem }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
+
+  const isActive = item.children.some(
+    (c) => c.path && pathname.startsWith(c.path)
+  );
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node))
+        setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className={`flex items-center gap-1 text-sm transition-colors ${
+          isActive
+            ? "text-foreground font-medium"
+            : "text-muted-foreground hover:text-foreground"
+        }`}
+      >
+        {item.label}
+        <svg
+          className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2.5}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-full mt-2 w-44 rounded-lg border border-border bg-background shadow-lg z-50 py-1 overflow-hidden">
+          {item.children.map((child) => (
+            <Link
+              key={child.id}
+              href={child.path ?? "#"}
+              target={child.isExternal ? "_blank" : undefined}
+              rel={child.isExternal ? "noopener noreferrer" : undefined}
+              onClick={() => setOpen(false)}
+              className="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            >
+              {child.label}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NavItem({ item }: { item: MenuItem; key?: React.Key }) {
+  if (item.children.length > 0) {
+    return <DropdownMenu item={item} />;
+  }
+  return (
+    <NavLink href={item.path ?? "#"} exact={item.path === "/dashboard"}>
+      {item.label}
+    </NavLink>
+  );
+}
 
 function UserAvatar({ name }: { name: string }) {
   const initials = (name ?? "?").slice(0, 2).toUpperCase();
@@ -38,82 +135,21 @@ function LogoutIcon() {
   );
 }
 
-function AdminDropdown() {
-  const { t } = useTranslation("nav");
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const pathname = usePathname();
-
-  const isActive =
-    pathname.startsWith("/users") ||
-    pathname.startsWith("/role-permissions") ||
-    pathname.startsWith("/site-settings");
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className={`flex items-center gap-1 text-sm transition-colors ${
-          isActive ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground"
-        }`}
-      >
-        {t("admin")}
-        <svg
-          className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2.5}
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-
-      {open && (
-        <div className="absolute left-0 top-full mt-2 w-44 rounded-lg border border-border bg-background shadow-lg z-50 py-1 overflow-hidden">
-          <Link
-            href="/users"
-            onClick={() => setOpen(false)}
-            className="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          >
-            {t("users")}
-          </Link>
-          <Link
-            href="/role-permissions"
-            onClick={() => setOpen(false)}
-            className="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          >
-            {t("rolePermissions")}
-          </Link>
-          <Link
-            href="/site-settings"
-            onClick={() => setOpen(false)}
-            className="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          >
-            {t("siteSettings")}
-          </Link>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function UserDropdown({ displayName, user }: { displayName: string; user: NonNullable<ReturnType<typeof useAuth>["user"]> }) {
+function UserDropdown({
+  displayName,
+  user,
+}: {
+  displayName: string;
+  user: NonNullable<ReturnType<typeof useAuth>["user"]>;
+}) {
   const { t } = useTranslation("nav");
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node))
+        setOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -126,7 +162,9 @@ function UserDropdown({ displayName, user }: { displayName: string; user: NonNul
         className="flex items-center gap-2 rounded-full border border-border/60 bg-muted/50 px-3 py-1.5 hover:bg-muted transition-colors"
       >
         <UserAvatar name={displayName} />
-        <span className="text-sm font-medium leading-none text-foreground">{displayName}</span>
+        <span className="text-sm font-medium leading-none text-foreground">
+          {displayName}
+        </span>
         {user.role && (
           <>
             <span className="h-3.5 w-px bg-border/80" />
@@ -135,7 +173,10 @@ function UserDropdown({ displayName, user }: { displayName: string; user: NonNul
         )}
         <svg
           className={`h-3 w-3 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
-          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2.5}
         >
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
         </svg>
@@ -161,6 +202,16 @@ export function Header() {
   const { status, user } = useAuth();
   const router = useRouter();
 
+  const userRole = user?.role?.code ?? null;
+
+  const { data: flatMenus = [] } = useQuery({
+    queryKey: ["menus"],
+    queryFn: menuApi.getAll,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const tree = buildTree(flatMenus, userRole);
+
   const handleLogout = async () => {
     await authActions.logout();
     router.replace("/login");
@@ -171,7 +222,6 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-sm">
       <div className="flex h-14 w-full items-center justify-between px-4">
-        {/* Left: logo + nav */}
         <nav className="flex items-center gap-6">
           <Link
             href="/"
@@ -179,24 +229,16 @@ export function Header() {
           >
             BeautyBook
           </Link>
-          {status === "authenticated" && (
-            <>
-              <NavLink href="/dashboard" exact>
-                {t("dashboard")}
-              </NavLink>
-              <AdminDropdown />
-            </>
-          )}
+          {status === "authenticated" &&
+            tree.map((item) => <NavItem key={item.id} item={item} />)}
         </nav>
 
-        {/* Right: user info + actions */}
         <div className="flex items-center gap-2">
           <LanguageSelect />
           <ThemeSwitcher />
           {status === "authenticated" ? (
             <>
               {user && <UserDropdown displayName={displayName} user={user} />}
-              {/* Logout — ghost */}
               <button
                 onClick={handleLogout}
                 className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
