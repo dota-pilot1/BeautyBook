@@ -80,6 +80,7 @@ public class SecurityConfig {
                                 "/api/auth/check-email"
                         ).permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/site-settings").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/menus").permitAll()
                         .requestMatchers(
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
