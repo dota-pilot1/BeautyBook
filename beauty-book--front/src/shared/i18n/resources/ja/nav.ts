@@ -2,8 +2,10 @@ export const nav = {
   dashboard: "ダッシュボード",
   admin: "管理",
   users: "ユーザー管理",
+  roleManagement: "ロール管理",
   rolePermissions: "ロール・権限マッピング",
   siteSettings: "メイン管理",
+  menuManagement: "メニュー管理",
   profile: "マイプロフィール",
   logout: "ログアウト",
   login: "ログイン",
@@ -11,7 +13,6 @@ export const nav = {
   roles: {
     ROLE_ADMIN: "管理者",
     ROLE_MANAGER: "マネージャー",
-    ROLE_STYLIST: "スタイリスト",
-    ROLE_CUSTOMER: "顧客",
+    ROLE_USER: "一般ユーザー",
   },
 };

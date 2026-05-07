@@ -2,8 +2,10 @@ export const nav = {
   dashboard: "仪表板",
   admin: "管理",
   users: "用户管理",
+  roleManagement: "角色管理",
   rolePermissions: "角色与权限",
   siteSettings: "首页管理",
+  menuManagement: "菜单管理",
   profile: "我的资料",
   logout: "退出登录",
   login: "登录",
@@ -11,7 +13,6 @@ export const nav = {
   roles: {
     ROLE_ADMIN: "管理员",
     ROLE_MANAGER: "经理",
-    ROLE_STYLIST: "造型师",
-    ROLE_CUSTOMER: "顾客",
+    ROLE_USER: "普通用户",
   },
 };

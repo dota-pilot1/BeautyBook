@@ -6,8 +6,7 @@ import type { RoleSummary } from "@/entities/user/model/types";
 const ROLE_STYLES: Record<string, string> = {
   ROLE_ADMIN: "bg-red-500/10 text-red-600",
   ROLE_MANAGER: "bg-amber-500/10 text-amber-600",
-  ROLE_STYLIST: "bg-blue-500/10 text-blue-600",
-  ROLE_CUSTOMER: "bg-slate-500/10 text-slate-500",
+  ROLE_USER: "bg-slate-500/10 text-slate-500",
 };
 
 const DEFAULT_STYLE = "bg-muted text-muted-foreground";

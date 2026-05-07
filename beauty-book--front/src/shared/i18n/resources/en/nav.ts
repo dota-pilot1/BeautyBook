@@ -2,8 +2,10 @@ export const nav = {
   dashboard: "Dashboard",
   admin: "Admin",
   users: "Users",
+  roleManagement: "Roles",
   rolePermissions: "Roles & Permissions",
   siteSettings: "Landing Page",
+  menuManagement: "Menu Management",
   profile: "My Profile",
   logout: "Logout",
   login: "Login",
@@ -11,7 +13,6 @@ export const nav = {
   roles: {
     ROLE_ADMIN: "Admin",
     ROLE_MANAGER: "Manager",
-    ROLE_STYLIST: "Stylist",
-    ROLE_CUSTOMER: "Customer",
+    ROLE_USER: "User",
   },
 };
