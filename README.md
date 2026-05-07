@@ -219,9 +219,21 @@ beauty-book--front/src/
 | `PermissionSeeder` | 기본 권한 9종 |
 | `MenuSeeder` | 헤더 메뉴 기본 6개 |
 
+## Default Roles
+
+기본 롤은 `RoleSeeder`에서 관리합니다. 역할 관리가 보일러플레이트에 기본 탑재되어 있으므로, 새 프로젝트로 파생할 때는 **이 초기 롤 목록과 회원가입 기본 롤만** 프로젝트 성격에 맞게 교체하면 됩니다.
+
+| 롤 | 설명 |
+| --- | --- |
+| `ROLE_ADMIN` | 시스템 전체 관리자 |
+| `ROLE_MANAGER` | 중간 관리자 |
+| `ROLE_USER` | 기본 가입자 |
+
 가입 정책:
 - **첫 번째 가입자** → 자동으로 `ROLE_ADMIN` 부여
 - **이후 가입자** → 기본 `ROLE_USER`
+
+> 파생 프로젝트에서는 `RoleSeeder.java` 롤 목록과 `AuthService.java` 의 `signupRoleCode` 기본값만 교체하면 됩니다. 기존 DB에 이미 등록된 롤은 시더가 덮어쓰지 않으므로 DB 초기화 후 적용됩니다.
 
 ---
 
