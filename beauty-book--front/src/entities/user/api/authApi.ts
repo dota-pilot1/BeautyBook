@@ -1,9 +1,24 @@
 import { api } from "@/shared/api/axios";
-import type { LoginRequest, SignupRequest, SignupResponse, TokenResponse, User } from "../model/types";
+import type {
+  EmailSendCodeRequest,
+  EmailVerifyCodeRequest,
+  EmailVerifyCodeResponse,
+  LoginRequest,
+  SignupRequest,
+  SignupResponse,
+  TokenResponse,
+  User,
+} from "../model/types";
 
 export const authApi = {
   signup: (body: SignupRequest) =>
     api.post<SignupResponse>("/api/auth/signup", body).then((r) => r.data),
+
+  sendEmailCode: (body: EmailSendCodeRequest) =>
+    api.post<void>("/api/auth/email/send-code", body).then((r) => r.data),
+
+  verifyEmailCode: (body: EmailVerifyCodeRequest) =>
+    api.post<EmailVerifyCodeResponse>("/api/auth/email/verify-code", body).then((r) => r.data),
 
   checkEmail: (email: string) =>
     api

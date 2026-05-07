@@ -21,5 +21,9 @@ public record SignupRequest(
         @Schema(example = "홍길동")
         @NotBlank(message = "사용자명을 입력해주세요.")
         @Size(min = 2, max = 50, message = "사용자명은 2~50자여야 합니다.")
-        String username
+        String username,
+
+        @Schema(description = "이메일 인증 완료 후 발급받은 토큰")
+        @NotBlank(message = "이메일 인증을 완료해주세요.")
+        String verifiedToken
 ) {}

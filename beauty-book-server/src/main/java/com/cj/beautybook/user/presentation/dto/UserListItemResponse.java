@@ -13,10 +13,10 @@ public record UserListItemResponse(
         boolean active,
         Instant createdAt
 ) {
-    public static UserListItemResponse from(User u) {
+    public static UserListItemResponse from(User u, String email) {
         return new UserListItemResponse(
                 u.getId(),
-                u.getEmail(),
+                email,
                 u.getUsername(),
                 RoleSummary.from(u.getRole()),
                 u.isActive(),

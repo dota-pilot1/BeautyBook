@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { LogIn, UserPlus } from "lucide-react";
+import { ChevronDown, LogIn, LogOut, UserCircle, UserPlus } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth, authActions } from "@/entities/user/model/authStore";
 import { menuApi } from "@/entities/menu/api/menuApi";
@@ -59,26 +59,18 @@ function DropdownMenu({ item }: { item: MenuItem }) {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className={`flex items-center gap-1 text-sm transition-colors ${
+        className={`inline-flex h-9 items-center gap-1 border-b-2 px-1 text-sm transition-colors ${
           isActive
-            ? "text-foreground font-medium"
-            : "text-muted-foreground hover:text-foreground"
+            ? "border-primary text-foreground font-medium"
+            : "border-transparent text-muted-foreground hover:text-foreground"
         }`}
       >
         {item.label}
-        <svg
-          className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2.5}
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-        </svg>
+        <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full mt-2 w-44 rounded-lg border border-border bg-background shadow-lg z-50 py-1 overflow-hidden">
+        <div className="absolute left-0 top-full mt-2 w-44 rounded-md border border-border bg-background shadow-lg z-50 py-1 overflow-hidden">
           {item.children.map((child) => (
             <Link
               key={child.id}
@@ -111,36 +103,20 @@ function NavItem({ item }: { item: MenuItem; key?: React.Key }) {
 function UserAvatar({ name }: { name: string }) {
   const initials = (name ?? "?").slice(0, 2).toUpperCase();
   return (
-    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold select-none">
+    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground text-[10px] font-bold select-none">
       {initials}
     </span>
-  );
-}
-
-function LogoutIcon() {
-  return (
-    <svg
-      className="h-3.5 w-3.5"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={2}
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6a2 2 0 012 2v1"
-      />
-    </svg>
   );
 }
 
 function UserDropdown({
   displayName,
   user,
+  onLogout,
 }: {
   displayName: string;
   user: NonNullable<ReturnType<typeof useAuth>["user"]>;
+  onLogout: () => void;
 }) {
   const { t } = useTranslation("nav");
   const [open, setOpen] = useState(false);
@@ -156,10 +132,10 @@ function UserDropdown({
   }, []);
 
   return (
-    <div ref={ref} className="relative hidden sm:block">
+    <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 rounded-full border border-border/60 bg-muted/50 px-3 py-1.5 hover:bg-muted transition-colors"
+        className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-background px-2.5 transition-colors hover:bg-accent"
       >
         <UserAvatar name={displayName} />
         <span className="text-sm font-medium leading-none text-foreground">
@@ -171,26 +147,40 @@ function UserDropdown({
             <RoleBadge role={user.role} />
           </>
         )}
-        <svg
-          className={`h-3 w-3 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2.5}
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-        </svg>
+        <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-44 rounded-lg border border-border bg-background shadow-lg z-50 py-1 overflow-hidden">
+        <div className="absolute right-0 top-full mt-2 w-56 rounded-md border border-border bg-background shadow-lg z-50 py-1 overflow-hidden">
+          <div className="border-b border-border px-3 py-2.5">
+            <div className="flex items-center gap-2">
+              <UserAvatar name={displayName} />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-foreground">{displayName}</p>
+                <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+              </div>
+            </div>
+            {user.role && <div className="mt-2"><RoleBadge role={user.role} /></div>}
+          </div>
           <Link
             href="/profile"
             onClick={() => setOpen(false)}
-            className="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           >
+            <UserCircle className="h-4 w-4" />
             {t("profile")}
           </Link>
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              onLogout();
+            }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          >
+            <LogOut className="h-4 w-4" />
+            {t("logout")}
+          </button>
         </div>
       )}
     </div>
@@ -220,12 +210,12 @@ export function Header() {
   const displayName = user?.username ?? user?.email ?? "?";
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-sm">
+    <header className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur-sm">
       <div className="flex h-14 w-full items-center justify-between px-4">
-        <nav className="flex items-center gap-6">
+        <nav className="flex min-w-0 items-center gap-5">
           <Link
             href="/"
-            className="text-sm font-semibold tracking-tight hover:opacity-80 transition-opacity"
+            className="mr-2 text-sm font-semibold tracking-tight hover:opacity-80 transition-opacity"
           >
             BeautyBook
           </Link>
@@ -237,36 +227,23 @@ export function Header() {
           <LanguageSelect />
           <ThemeSwitcher />
           {status === "authenticated" ? (
-            <>
-              {user && <UserDropdown displayName={displayName} user={user} />}
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-              >
-                <LogoutIcon />
-                <span className="hidden sm:inline">{t("logout")}</span>
-              </button>
-            </>
+            user && <UserDropdown displayName={displayName} user={user} onLogout={handleLogout} />
           ) : status === "anonymous" ? (
             <>
               <Link
                 href="/register"
-                className="flex items-center gap-2 rounded-full border border-border/60 bg-muted/50 px-3 py-1.5 text-foreground hover:bg-muted transition-colors"
+                className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-background px-3 text-foreground transition-colors hover:bg-accent"
               >
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground ring-2 ring-background shadow-sm">
-                  <UserPlus className="h-3.5 w-3.5" />
-                </span>
+                <UserPlus className="h-4 w-4 text-muted-foreground" />
                 <span className="hidden sm:inline text-sm font-medium leading-none">
                   {t("register")}
                 </span>
               </Link>
               <Link
                 href="/login"
-                className="flex items-center gap-2 rounded-full bg-primary text-primary-foreground px-3 py-1.5 hover:opacity-90 transition-opacity"
+                className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-primary-foreground transition-opacity hover:opacity-90"
               >
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-foreground/15 ring-2 ring-primary-foreground/10">
-                  <LogIn className="h-3.5 w-3.5" />
-                </span>
+                <LogIn className="h-4 w-4" />
                 <span className="hidden sm:inline text-sm font-medium leading-none">
                   {t("login")}
                 </span>

@@ -1,5 +1,6 @@
 package com.cj.beautybook.auth.jwt;
 
+import com.cj.beautybook.auth.domain.AuthProviderType;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.stereotype.Component;
@@ -52,6 +53,20 @@ public class JwtTokenProvider {
                 .compact();
     }
 
+    public String generateEmailVerificationToken(AuthProviderType providerType, String identifier, long expirationMs) {
+        Date now = new Date();
+        return Jwts.builder()
+                .issuer(props.issuer())
+                .subject(identifier)
+                .claim("providerType", providerType.name())
+                .claim("identifier", identifier)
+                .claim("type", TokenType.EMAIL_VERIFICATION.name())
+                .issuedAt(now)
+                .expiration(new Date(now.getTime() + expirationMs))
+                .signWith(key, Jwts.SIG.HS256)
+                .compact();
+    }
+
     public Jws<Claims> parse(String token) {
         return Jwts.parser()
                 .verifyWith(key)
@@ -60,11 +75,15 @@ public class JwtTokenProvider {
                 .parseSignedClaims(token);
     }
 
-    public Long getUserId(Claims c)    { return Long.parseLong(c.getSubject()); }
-    public String getEmail(Claims c)   { return c.get("email", String.class); }
-    public String getUsername(Claims c){ return c.get("username", String.class); }
-    public String getRole(Claims c)    { return c.get("role", String.class); }
-    public TokenType getType(Claims c) { return TokenType.valueOf(c.get("type", String.class)); }
+    public Long getUserId(Claims c)           { return Long.parseLong(c.getSubject()); }
+    public String getEmail(Claims c)          { return c.get("email", String.class); }
+    public String getUsername(Claims c)       { return c.get("username", String.class); }
+    public String getRole(Claims c)           { return c.get("role", String.class); }
+    public TokenType getType(Claims c)        { return TokenType.valueOf(c.get("type", String.class)); }
+    public AuthProviderType getProviderType(Claims c) {
+        return AuthProviderType.valueOf(c.get("providerType", String.class));
+    }
+    public String getIdentifier(Claims c)     { return c.get("identifier", String.class); }
 
     // 2차 구현 시 JwtAuthenticationFilter에서 사용 예정 — JWT claims에서 permissions 추출 → UserPrincipal에 전달
     @SuppressWarnings("unchecked")

@@ -19,10 +19,10 @@ export function NavLink({ href, children, exact = false, className }: NavLinkPro
     <Link
       href={href}
       className={cn(
-        "text-sm transition-colors",
+        "inline-flex h-9 items-center border-b-2 px-1 text-sm transition-colors",
         isActive
-          ? "text-foreground font-medium"
-          : "text-muted-foreground hover:text-foreground",
+          ? "border-primary text-foreground font-medium"
+          : "border-transparent text-muted-foreground hover:text-foreground",
         className
       )}
     >

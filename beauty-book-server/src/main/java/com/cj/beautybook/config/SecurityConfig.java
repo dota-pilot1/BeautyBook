@@ -1,6 +1,5 @@
 package com.cj.beautybook.config;
 
-import com.cj.beautybook.auth.security.CustomUserDetailsService;
 import com.cj.beautybook.auth.security.JwtAuthenticationFilter;
 import com.cj.beautybook.auth.security.RestAuthenticationEntryPoint;
 import com.cj.beautybook.common.exception.ErrorCode;
@@ -12,9 +11,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.ProviderManager;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -37,15 +33,6 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
-    }
-
-    @Bean
-    public AuthenticationManager authenticationManager(
-            CustomUserDetailsService uds,
-            PasswordEncoder encoder) {
-        DaoAuthenticationProvider provider = new DaoAuthenticationProvider(uds);
-        provider.setPasswordEncoder(encoder);
-        return new ProviderManager(provider);
     }
 
     @Bean
@@ -77,7 +64,9 @@ public class SecurityConfig {
                                 "/api/auth/signup",
                                 "/api/auth/login",
                                 "/api/auth/refresh",
-                                "/api/auth/check-email"
+                                "/api/auth/check-email",
+                                "/api/auth/email/send-code",
+                                "/api/auth/email/verify-code"
                         ).permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/site-settings").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/menus").permitAll()

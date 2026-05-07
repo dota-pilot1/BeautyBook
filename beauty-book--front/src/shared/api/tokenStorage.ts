@@ -1,5 +1,5 @@
-const ACCESS_KEY = "twilio.accessToken";
-const REFRESH_KEY = "twilio.refreshToken";
+const ACCESS_KEY = "beauty-book.accessToken";
+const REFRESH_KEY = "beauty-book.refreshToken";
 
 let accessMemory: string | null = null;
 

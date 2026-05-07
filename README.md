@@ -76,10 +76,12 @@ TARGET_DIR/
 ```
 com.cj.beautybook/
 ├── auth/                      # 인증 컨텍스트
-│   ├── domain/                # RefreshToken (도메인 엔티티 @Entity)
-│   ├── infrastructure/        # RefreshTokenRepository (JpaRepository)
+│   ├── domain/                # AuthAccount, AuthVerification, RefreshToken, AuthProviderType, AuthVerificationType
+│   ├── infrastructure/        # AuthAccountRepository, AuthVerificationRepository, RefreshTokenRepository
+│   ├── application/           # EmailVerificationService, EmailVerificationSender, EmailVerificationProperties
+│   ├── presentation/dto/      # EmailSendCodeRequest, EmailVerifyCodeRequest, EmailVerifyCodeResponse
 │   ├── security/              # JwtAuthenticationFilter, UserPrincipal, CustomUserDetailsService
-│   └── jwt/                   # JwtTokenProvider, JwtProperties, TokenType
+│   └── jwt/                   # JwtTokenProvider, JwtProperties, TokenType (ACCESS/REFRESH/EMAIL_VERIFICATION)
 ├── user/                      # 유저 컨텍스트
 │   ├── domain/ application/ infrastructure/ presentation/(+dto)
 ├── role/                      # 역할 컨텍스트
@@ -140,7 +142,10 @@ User ──(N:1)── Role ──(N:M)── Permission ──(N:1)── Permi
 
 ## 주요 기능
 
-- 이메일 회원가입 / 로그인 (JWT)
+- **이메일 인증 회원가입** — send-code → verify-code → verifiedToken → signup 플로우, BCrypt 코드 해싱, TTL 300초, 실패 횟수 제한 (최대 5회)
+- **이메일 로그인** (JWT Access/Refresh Token)
+- **Gmail SMTP** 연동 — `log-only` 모드(콘솔 출력)·`dev-bypass-code`(1234 우회) 지원
+- `auth_accounts` / `auth_verifications` 테이블 분리 구조 (providerType + identifier)
 - 최초 가입자 자동 ROLE_ADMIN 부여
 - 역할(Role) CRUD
 - 권한(Permission) CRUD + 카테고리 분류
@@ -253,4 +258,4 @@ npm run dev
 
 ---
 
-> 다음 단계 보강 아이디어 (이메일 인증, OAuth, Refresh Token, 2FA+Audit Log, E2E+CI 등) 는 [보일러 플레이트 강화 방법.md](./보일러%20플레이트%20강화%20방법.md) 참고.
+> 다음 단계 보강 아이디어 (OAuth, 2FA+Audit Log, E2E+CI 등) 는 [보일러 플레이트 강화 방법.md](./보일러%20플레이트%20강화%20방법.md) 참고.

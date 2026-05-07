@@ -1,5 +1,6 @@
 package com.cj.beautybook.auth.security;
 
+import com.cj.beautybook.auth.domain.AuthAccount;
 import com.cj.beautybook.user.domain.User;
 import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
@@ -32,7 +33,13 @@ public class UserPrincipal implements UserDetails {
     }
 
     public static UserPrincipal fromEntity(User u) {
-        return new UserPrincipal(u.getId(), u.getEmail(), u.getUsername(), u.getPasswordHash(), u.getRole().getCode(), List.of(), u.isActive());
+        return new UserPrincipal(u.getId(), u.getEmail(), u.getUsername(), null, u.getRole().getCode(), List.of(), u.isActive());
+    }
+
+    public static UserPrincipal fromAuthAccount(AuthAccount account) {
+        User user = account.getUser();
+        return new UserPrincipal(user.getId(), account.getIdentifier(), user.getUsername(),
+                account.getPasswordHash(), user.getRole().getCode(), List.of(), user.isActive());
     }
 
     public static UserPrincipal fromClaims(Long id, String email, String username, String roleCode, List<String> permissions) {

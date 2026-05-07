@@ -9,7 +9,13 @@ export const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
-const AUTH_PATHS = ["/api/auth/login", "/api/auth/signup", "/api/auth/refresh"];
+const AUTH_PATHS = [
+  "/api/auth/login",
+  "/api/auth/signup",
+  "/api/auth/refresh",
+  "/api/auth/email/send-code",
+  "/api/auth/email/verify-code",
+];
 
 api.interceptors.request.use((config) => {
   if (AUTH_PATHS.some((p) => config.url?.includes(p))) return config;

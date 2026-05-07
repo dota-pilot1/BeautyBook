@@ -1,5 +1,7 @@
 package com.cj.beautybook.user.domain;
 
+import com.cj.beautybook.auth.domain.AuthAccount;
+import com.cj.beautybook.auth.domain.AuthProviderType;
 import com.cj.beautybook.role.domain.Role;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -9,6 +11,8 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "users")
@@ -19,12 +23,6 @@ public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(nullable = false, unique = true, length = 255)
-    private String email;
-
-    @Column(nullable = false, length = 100)
-    private String passwordHash;
 
     @Column(nullable = false, length = 50)
     private String username;
@@ -44,10 +42,11 @@ public class User {
     @Column(nullable = false)
     private Instant updatedAt;
 
-    public static User createNewUser(String email, String passwordHash, String username, Role defaultRole) {
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<AuthAccount> authAccounts = new ArrayList<>();
+
+    public static User createNewUser(String username, Role defaultRole) {
         User u = new User();
-        u.email = email;
-        u.passwordHash = passwordHash;
         u.username = username;
         u.role = defaultRole;
         u.active = true;
@@ -59,8 +58,21 @@ public class User {
     public void changeRole(Role newRole) { this.role = newRole; }
     public void toggleActive() { this.active = !this.active; }
 
-    public void updateProfile(String email, String username) {
-        this.email = email;
+    public void updateProfile(String username) {
         this.username = username;
+    }
+
+    public void addAuthAccount(AuthAccount authAccount) {
+        if (!authAccounts.contains(authAccount)) {
+            authAccounts.add(authAccount);
+        }
+    }
+
+    public String getEmail() {
+        return authAccounts.stream()
+                .filter(account -> account.getProviderType() == AuthProviderType.EMAIL)
+                .map(AuthAccount::getIdentifier)
+                .findFirst()
+                .orElse(null);
     }
 }

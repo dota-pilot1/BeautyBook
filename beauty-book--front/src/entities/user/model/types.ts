@@ -30,9 +30,24 @@ export type SignupRequest = {
   email: string;
   password: string;
   username: string;
+  verifiedToken: string;
 };
 
-export type SignupResponse = User;
+export type SignupResponse = TokenResponse;
+
+export type EmailSendCodeRequest = {
+  email: string;
+};
+
+export type EmailVerifyCodeRequest = {
+  email: string;
+  code: string;
+};
+
+export type EmailVerifyCodeResponse = {
+  verifiedToken: string;
+  expiresInSec: number;
+};
 
 export type LoginRequest = {
   email: string;

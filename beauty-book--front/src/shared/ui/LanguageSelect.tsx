@@ -57,11 +57,9 @@ export function LanguageSelect() {
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label="Language"
-        className="flex items-center gap-2 rounded-full border border-border/60 bg-muted/50 px-3 py-1.5 text-foreground hover:bg-muted transition-colors"
+        className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-background px-2.5 text-foreground transition-colors hover:bg-accent"
       >
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground ring-2 ring-background shadow-sm">
-          <Globe className="h-3.5 w-3.5" />
-        </span>
+        <Globe className="h-4 w-4 text-muted-foreground" />
         <span
           className="hidden sm:inline text-sm font-medium leading-none"
           suppressHydrationWarning
@@ -71,7 +69,7 @@ export function LanguageSelect() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-40 rounded-lg border border-border bg-background shadow-lg z-50 py-1 overflow-hidden">
+        <div className="absolute right-0 top-full mt-2 w-40 rounded-md border border-border bg-background shadow-lg z-50 py-1 overflow-hidden">
           {SUPPORTED_LANGUAGES.map((l) => (
             <button
               key={l.code}

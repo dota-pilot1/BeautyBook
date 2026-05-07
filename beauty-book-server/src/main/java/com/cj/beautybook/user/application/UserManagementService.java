@@ -1,5 +1,9 @@
 package com.cj.beautybook.user.application;
 
+import com.cj.beautybook.auth.application.EmailVerificationService;
+import com.cj.beautybook.auth.domain.AuthAccount;
+import com.cj.beautybook.auth.domain.AuthProviderType;
+import com.cj.beautybook.auth.infrastructure.AuthAccountRepository;
 import com.cj.beautybook.auth.infrastructure.RefreshTokenRepository;
 import com.cj.beautybook.common.exception.BusinessException;
 import com.cj.beautybook.common.exception.DuplicateEmailException;
@@ -23,42 +27,53 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserManagementService {
 
     private final UserRepository userRepository;
+    private final AuthAccountRepository authAccountRepository;
     private final RoleService roleService;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final EmailVerificationService emailVerificationService;
 
     @Transactional(readOnly = true)
     public Page<UserListItemResponse> getUsers(Pageable pageable) {
-        return userRepository.findAll(pageable).map(UserListItemResponse::from);
+        return userRepository.findAll(pageable)
+                .map(user -> UserListItemResponse.from(user, findEmailIdentifier(user)));
     }
 
     @Transactional(readOnly = true)
     public UserListItemResponse getUser(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-        return UserListItemResponse.from(user);
+        return UserListItemResponse.from(user, findEmailIdentifier(user));
     }
 
     @Transactional
     public UserListItemResponse createUser(CreateUserRequest req) {
-        if (userRepository.existsByEmail(req.email())) {
+        String email = emailVerificationService.normalizeEmail(req.email());
+        if (authAccountRepository.existsByProviderTypeAndIdentifier(AuthProviderType.EMAIL, email)) {
             throw new DuplicateEmailException();
         }
         Role role = roleService.getById(req.roleId());
         String hash = passwordEncoder.encode(req.password());
-        User saved = userRepository.save(User.createNewUser(req.email(), hash, req.username(), role));
-        return UserListItemResponse.from(saved);
+        User saved = userRepository.save(User.createNewUser(req.username(), role));
+        authAccountRepository.save(AuthAccount.createEmail(saved, email, hash, true));
+        return UserListItemResponse.from(saved, email);
     }
 
     @Transactional
     public UserListItemResponse updateProfile(Long userId, UpdateUserRequest req) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-        if (!user.getEmail().equals(req.email()) && userRepository.existsByEmail(req.email())) {
+        String email = emailVerificationService.normalizeEmail(req.email());
+        AuthAccount account = authAccountRepository
+                .findFirstByUserIdAndProviderTypeOrderByIdAsc(userId, AuthProviderType.EMAIL)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        if (!account.getIdentifier().equals(email)
+                && authAccountRepository.existsByProviderTypeAndIdentifier(AuthProviderType.EMAIL, email)) {
             throw new DuplicateEmailException();
         }
-        user.updateProfile(req.email(), req.username());
-        return UserListItemResponse.from(user);
+        account.changeIdentifier(email);
+        user.updateProfile(req.username());
+        return UserListItemResponse.from(user, email);
     }
 
     @Transactional
@@ -67,7 +82,7 @@ public class UserManagementService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
         Role newRole = roleService.getById(roleId);
         user.changeRole(newRole);
-        return UserListItemResponse.from(user);
+        return UserListItemResponse.from(user, findEmailIdentifier(user));
     }
 
     @Transactional
@@ -75,7 +90,7 @@ public class UserManagementService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
         user.toggleActive();
-        return UserListItemResponse.from(user);
+        return UserListItemResponse.from(user, findEmailIdentifier(user));
     }
 
     @Transactional
@@ -84,5 +99,11 @@ public class UserManagementService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
         refreshTokenRepository.deleteByUserId(userId);
         userRepository.delete(user);
+    }
+
+    private String findEmailIdentifier(User user) {
+        return authAccountRepository.findFirstByUserIdAndProviderTypeOrderByIdAsc(user.getId(), AuthProviderType.EMAIL)
+                .map(AuthAccount::getIdentifier)
+                .orElse(null);
     }
 }

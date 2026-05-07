@@ -1,10 +1,11 @@
 package com.cj.beautybook.user.presentation;
 
+import com.cj.beautybook.auth.application.EmailVerificationService;
+import com.cj.beautybook.auth.presentation.dto.EmailSendCodeRequest;
+import com.cj.beautybook.auth.presentation.dto.EmailVerifyCodeRequest;
+import com.cj.beautybook.auth.presentation.dto.EmailVerifyCodeResponse;
 import com.cj.beautybook.auth.security.UserPrincipal;
-import com.cj.beautybook.common.exception.BusinessException;
-import com.cj.beautybook.common.exception.ErrorCode;
 import com.cj.beautybook.user.application.AuthService;
-import com.cj.beautybook.user.infrastructure.UserRepository;
 import com.cj.beautybook.user.presentation.dto.*;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
@@ -22,10 +23,25 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
-    private final UserRepository userRepository;
+    private final EmailVerificationService emailVerificationService;
+
+    @PostMapping("/email/send-code")
+    public ResponseEntity<Void> sendEmailCode(@Valid @RequestBody EmailSendCodeRequest req) {
+        emailVerificationService.sendSignupCode(req.email());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/email/verify-code")
+    public ResponseEntity<EmailVerifyCodeResponse> verifyEmailCode(@Valid @RequestBody EmailVerifyCodeRequest req) {
+        String verifiedToken = emailVerificationService.verifySignupCode(req.email(), req.code());
+        return ResponseEntity.ok(new EmailVerifyCodeResponse(
+                verifiedToken,
+                emailVerificationService.getVerifiedTokenTtlSeconds()
+        ));
+    }
 
     @PostMapping("/signup")
-    public ResponseEntity<SignupResponse> signup(@Valid @RequestBody SignupRequest req) {
+    public ResponseEntity<TokenResponse> signup(@Valid @RequestBody SignupRequest req) {
         return ResponseEntity.status(HttpStatus.CREATED).body(authService.signup(req));
     }
 
@@ -54,9 +70,6 @@ public class AuthController {
 
     @GetMapping("/me")
     public ResponseEntity<UserSummary> me(@AuthenticationPrincipal UserPrincipal principal) {
-        return userRepository.findById(principal.getId())
-                .map(UserSummary::from)
-                .map(ResponseEntity::ok)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        return ResponseEntity.ok(authService.me(principal.getId()));
     }
 }

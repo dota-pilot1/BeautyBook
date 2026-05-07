@@ -1,10 +1,13 @@
 package com.cj.beautybook.user.application;
 
+import com.cj.beautybook.auth.application.EmailVerificationService;
+import com.cj.beautybook.auth.domain.AuthAccount;
+import com.cj.beautybook.auth.domain.AuthProviderType;
 import com.cj.beautybook.auth.domain.RefreshToken;
+import com.cj.beautybook.auth.infrastructure.AuthAccountRepository;
 import com.cj.beautybook.auth.infrastructure.RefreshTokenRepository;
 import com.cj.beautybook.auth.jwt.JwtTokenProvider;
 import com.cj.beautybook.auth.jwt.TokenType;
-import com.cj.beautybook.auth.security.UserPrincipal;
 import com.cj.beautybook.common.exception.BusinessException;
 import com.cj.beautybook.common.exception.DuplicateEmailException;
 import com.cj.beautybook.common.exception.ErrorCode;
@@ -18,10 +21,6 @@ import com.cj.beautybook.user.presentation.dto.*;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,15 +33,18 @@ import java.util.List;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final AuthAccountRepository authAccountRepository;
     private final RoleRepository roleRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
-    private final AuthenticationManager authenticationManager;
+    private final EmailVerificationService emailVerificationService;
 
     @Transactional
-    public SignupResponse signup(SignupRequest req) {
-        if (userRepository.existsByEmail(req.email())) {
+    public TokenResponse signup(SignupRequest req) {
+        String email = emailVerificationService.normalizeEmail(req.email());
+        verifySignupToken(email, req.verifiedToken());
+        if (authAccountRepository.existsByProviderTypeAndIdentifier(AuthProviderType.EMAIL, email)) {
             throw new DuplicateEmailException();
         }
         String signupRoleCode = userRepository.count() == 0
@@ -51,29 +53,29 @@ public class AuthService {
         Role defaultRole = roleRepository.findByCode(signupRoleCode)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ROLE_NOT_FOUND));
         String hash = passwordEncoder.encode(req.password());
-        User saved = userRepository.save(User.createNewUser(req.email(), hash, req.username(), defaultRole));
-        return SignupResponse.from(saved);
+        User saved = userRepository.save(User.createNewUser(req.username(), defaultRole));
+        authAccountRepository.save(AuthAccount.createEmail(saved, email, hash, true));
+        return issueTokens(saved, email);
     }
 
     @Transactional(readOnly = true)
     public boolean isEmailAvailable(String email) {
-        return !userRepository.existsByEmail(email);
+        String normalized = emailVerificationService.normalizeEmail(email);
+        return !authAccountRepository.existsByProviderTypeAndIdentifier(AuthProviderType.EMAIL, normalized);
     }
 
     @Transactional
     public TokenResponse login(LoginRequest req) {
-        Authentication auth;
-        try {
-            auth = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(req.email(), req.password())
-            );
-        } catch (BadCredentialsException e) {
+        String email = emailVerificationService.normalizeEmail(req.email());
+        AuthAccount account = authAccountRepository.findByProviderTypeAndIdentifier(AuthProviderType.EMAIL, email)
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_CREDENTIALS));
+        if (account.getPasswordHash() == null || !passwordEncoder.matches(req.password(), account.getPasswordHash())) {
             throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
         }
-        UserPrincipal p = (UserPrincipal) auth.getPrincipal();
-        if (!p.isEnabled()) throw new BusinessException(ErrorCode.ACCOUNT_INACTIVE);
-        User user = userRepository.findById(p.getId()).orElseThrow();
-        return issueTokens(user);
+        if (!account.isVerified()) throw new BusinessException(ErrorCode.EMAIL_NOT_VERIFIED);
+        User user = account.getUser();
+        if (!user.isActive()) throw new BusinessException(ErrorCode.ACCOUNT_INACTIVE);
+        return issueTokens(user, account.getIdentifier());
     }
 
     @Transactional
@@ -101,7 +103,7 @@ public class AuthService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
         if (!user.isActive()) throw new BusinessException(ErrorCode.ACCOUNT_INACTIVE);
 
-        return issueTokens(user);
+        return issueTokens(user, findEmailIdentifier(user));
     }
 
     @Transactional
@@ -109,10 +111,17 @@ public class AuthService {
         refreshTokenRepository.deleteByUserId(userId);
     }
 
-    private TokenResponse issueTokens(User user) {
+    @Transactional(readOnly = true)
+    public UserSummary me(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        return UserSummary.from(user, findEmailIdentifier(user));
+    }
+
+    private TokenResponse issueTokens(User user, String email) {
         List<String> permCodes = user.getRole().getPermissions()
                 .stream().map(p -> p.getCode()).toList();
-        String access  = jwtTokenProvider.generateAccessToken(user.getId(), user.getEmail(), user.getUsername(), user.getRole().getCode(), permCodes);
+        String access  = jwtTokenProvider.generateAccessToken(user.getId(), email, user.getUsername(), user.getRole().getCode(), permCodes);
         String refresh = jwtTokenProvider.generateRefreshToken(user.getId());
         Instant expiresAt = Instant.now().plusMillis(jwtTokenProvider.getRefreshTokenExpirationMs());
 
@@ -122,6 +131,26 @@ public class AuthService {
         );
 
         long expiresInSec = jwtTokenProvider.getAccessTokenExpirationMs() / 1000;
-        return new TokenResponse(access, refresh, expiresInSec, UserSummary.from(user));
+        return new TokenResponse(access, refresh, expiresInSec, UserSummary.from(user, email));
+    }
+
+    private String findEmailIdentifier(User user) {
+        return authAccountRepository.findFirstByUserIdAndProviderTypeOrderByIdAsc(user.getId(), AuthProviderType.EMAIL)
+                .map(AuthAccount::getIdentifier)
+                .orElse(null);
+    }
+
+    private void verifySignupToken(String email, String verifiedToken) {
+        Claims claims;
+        try {
+            claims = jwtTokenProvider.parse(verifiedToken).getPayload();
+        } catch (JwtException | IllegalArgumentException e) {
+            throw new BusinessException(ErrorCode.EMAIL_NOT_VERIFIED);
+        }
+        if (jwtTokenProvider.getType(claims) != TokenType.EMAIL_VERIFICATION
+                || jwtTokenProvider.getProviderType(claims) != AuthProviderType.EMAIL
+                || !email.equals(jwtTokenProvider.getIdentifier(claims))) {
+            throw new BusinessException(ErrorCode.EMAIL_NOT_VERIFIED);
+        }
     }
 }

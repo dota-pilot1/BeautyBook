@@ -12,6 +12,8 @@ export const signupSchema = z
       .max(255, "emailTooLong")
       .email("emailInvalid"),
 
+    emailCode: z.string(),
+
     password: z
       .string()
       .min(1, "passwordRequired")
