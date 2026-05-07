@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { menuApi } from "@/entities/menu/api/menuApi";
 import type { MenuRecord } from "@/entities/menu/model/types";
 import { toast, toastError } from "@/shared/lib/toast";
+import { Switch } from "@/shared/ui/Switch";
 
 type FormValues = {
   code: string;
@@ -26,12 +27,26 @@ type Props = {
   onClose: () => void;
 };
 
+function flattenMenusForSelect(
+  menus: MenuRecord[],
+  parentId: number | null = null,
+  depth = 0
+): Array<{ menu: MenuRecord; depth: number }> {
+  return menus
+    .filter((m) => m.parentId === parentId)
+    .sort((a, b) => a.displayOrder - b.displayOrder)
+    .flatMap((menu) => [
+      { menu, depth },
+      ...flattenMenusForSelect(menus, menu.id, depth + 1),
+    ]);
+}
+
 export function MenuFormDialog({ target, menus, onClose }: Props) {
   const qc = useQueryClient();
   const isNew = target === "new";
   const existing = isNew ? null : (target as MenuRecord);
 
-  const { register, handleSubmit, reset } = useForm<FormValues>({
+  const { register, handleSubmit, reset, setValue, control } = useForm<FormValues>({
     defaultValues: {
       code: "",
       parentId: "",
@@ -95,18 +110,26 @@ export function MenuFormDialog({ target, menus, onClose }: Props) {
     onError: (e) => toastError(e, "저장에 실패했습니다."),
   });
 
+  const visible = useWatch({ control, name: "visible" });
+  const isExternal = useWatch({ control, name: "isExternal" });
+
   if (!target) return null;
 
-  const roots = menus.filter((m) => m.parentId === null && (!existing || m.id !== existing.id));
+  const parentOptions = flattenMenusForSelect(
+    menus.filter((m) => !existing || m.id !== existing.id)
+  );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="w-full max-w-md rounded-xl border border-border bg-background p-6 shadow-xl">
-        <h2 className="mb-4 text-base font-semibold">
-          {isNew ? "메뉴 생성" : "메뉴 수정"}
-        </h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/35 px-4">
+      <div className="w-full max-w-2xl overflow-hidden rounded-lg border border-border bg-background shadow-xl">
+        <div className="border-b border-border bg-muted/35 px-5 py-4">
+          <p className="font-mono text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Menu</p>
+          <h2 className="mt-1 text-lg font-bold tracking-tight">
+            {isNew ? "메뉴 생성" : "메뉴 수정"}
+          </h2>
+        </div>
 
-        <form onSubmit={handleSubmit((v) => mutation.mutate(v))} className="flex flex-col gap-3">
+        <form onSubmit={handleSubmit((v) => mutation.mutate(v))} className="grid gap-3 px-5 py-5">
           {isNew && (
             <Field label="코드 *">
               <input {...register("code")} required placeholder="DASHBOARD" className={inputCls} />
@@ -116,8 +139,12 @@ export function MenuFormDialog({ target, menus, onClose }: Props) {
           <Field label="부모 메뉴">
             <select {...register("parentId")} className={inputCls}>
               <option value="">없음 (루트)</option>
-              {roots.map((m) => (
-                <option key={m.id} value={m.id}>{m.label} ({m.code})</option>
+              {parentOptions.map(({ menu, depth }) => (
+                <option key={menu.id} value={menu.id}>
+                  {"　".repeat(depth)}
+                  {depth > 0 ? "└ " : ""}
+                  {menu.label} ({menu.code})
+                </option>
               ))}
             </select>
           </Field>
@@ -146,18 +173,20 @@ export function MenuFormDialog({ target, menus, onClose }: Props) {
             <input type="number" {...register("displayOrder")} className={inputCls} />
           </Field>
 
-          <div className="flex gap-4 text-sm">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" {...register("visible")} className="h-4 w-4" />
-              표시
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" {...register("isExternal")} className="h-4 w-4" />
-              외부 링크
-            </label>
-          </div>
+          <ToggleField
+            label="표시"
+            description="꺼두면 헤더 메뉴에서 숨겨집니다."
+            checked={visible}
+            onCheckedChange={(checked) => setValue("visible", checked, { shouldDirty: true })}
+          />
+          <ToggleField
+            label="외부 링크"
+            description="새 탭 링크로 열어야 하는 외부 URL일 때 사용합니다."
+            checked={isExternal}
+            onCheckedChange={(checked) => setValue("isExternal", checked, { shouldDirty: true })}
+          />
 
-          <div className="mt-2 flex justify-end gap-2">
+          <div className="mt-2 flex justify-end gap-2 border-t border-border pt-4">
             <button type="button" onClick={onClose} className={cancelCls}>
               취소
             </button>
@@ -173,16 +202,45 @@ export function MenuFormDialog({ target, menus, onClose }: Props) {
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-1">
-      <label className="text-xs font-medium text-muted-foreground">{label}</label>
-      {children}
+    <div className="grid grid-cols-[8rem_minmax(0,1fr)] items-center gap-4">
+      <label className="text-right text-xs font-semibold text-muted-foreground">{label}</label>
+      <div className="min-w-0">{children}</div>
+    </div>
+  );
+}
+
+function ToggleField({
+  label,
+  description,
+  checked,
+  onCheckedChange,
+}: {
+  label: string;
+  description: string;
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+}) {
+  return (
+    <div className="grid grid-cols-[8rem_minmax(0,1fr)] items-center gap-4">
+      <span className="text-right text-xs font-semibold text-muted-foreground">{label}</span>
+      <div className="flex items-center justify-between rounded-md border border-border bg-muted/20 px-3 py-2.5">
+        <div>
+          <p className="text-sm font-semibold text-foreground">{checked ? "켜짐" : "꺼짐"}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
+        </div>
+        <Switch
+          checked={checked}
+          onCheckedChange={onCheckedChange}
+          aria-label={label}
+        />
+      </div>
     </div>
   );
 }
 
 const inputCls =
-  "rounded-md border border-input bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring";
+  "h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-ring/30";
 const cancelCls =
-  "rounded-md border border-border px-3 py-1.5 text-sm hover:bg-accent transition-colors";
+  "h-9 rounded-md border border-border px-3 text-sm font-semibold transition-colors hover:bg-accent";
 const submitCls =
-  "rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60 transition-opacity";
+  "h-9 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60";

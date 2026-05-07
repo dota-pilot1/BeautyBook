@@ -13,10 +13,11 @@ import {
 import { restrictToVerticalAxis, restrictToWindowEdges } from "@dnd-kit/modifiers";
 import { CSS } from "@dnd-kit/utilities";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronRight, GripVertical, Plus, Trash2 } from "lucide-react";
+import { ChevronRight, ExternalLink, Eye, EyeOff, GripVertical, Plus, Trash2 } from "lucide-react";
 import { menuApi, type UpdateMenuBody } from "@/entities/menu/api/menuApi";
 import type { MenuRecord, MenuItem } from "@/entities/menu/model/types";
 import { toast, toastError } from "@/shared/lib/toast";
+import { Switch } from "@/shared/ui/Switch";
 import { MenuFormDialog } from "./MenuFormDialog";
 
 function buildTree(flat: MenuRecord[]): MenuItem[] {
@@ -48,6 +49,21 @@ function toUpdateBody(m: MenuRecord): UpdateMenuBody {
     visible: m.visible,
     displayOrder: m.displayOrder,
   };
+}
+
+function collectDescendantIds(flat: MenuRecord[], parentId: number): number[] {
+  const children = flat.filter((m) => m.parentId === parentId);
+  return children.flatMap((child) => [
+    child.id,
+    ...collectDescendantIds(flat, child.id),
+  ]);
+}
+
+function flattenTreeForSelect(items: MenuItem[], depth = 0): Array<{ menu: MenuItem; depth: number }> {
+  return items.flatMap((item) => [
+    { menu: item, depth },
+    ...flattenTreeForSelect(item.children, depth + 1),
+  ]);
 }
 
 /* ── Detail Panel ─────────────────────────────── */
@@ -93,22 +109,26 @@ function DetailPanel({
     deleteMutation.mutate();
   };
 
-  const roots = allMenus.filter(
-    (m) => m.parentId === null && m.id !== menu.id
+  const blockedParentIds = new Set([
+    menu.id,
+    ...collectDescendantIds(allMenus, menu.id),
+  ]);
+  const parentOptions = flattenTreeForSelect(
+    buildTree(allMenus.filter((m) => !blockedParentIds.has(m.id)))
   );
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between mb-4">
+    <div className="flex h-full flex-col">
+      <div className="flex items-center justify-between border-b border-border bg-muted/30 px-5 py-4">
         <div>
-          <p className="text-xs text-muted-foreground font-mono">{menu.code}</p>
-          <h3 className="font-semibold text-base">{menu.label}</h3>
+          <p className="font-mono text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{menu.code}</p>
+          <h3 className="mt-1 text-lg font-bold tracking-tight">{menu.label}</h3>
         </div>
         <div className="flex gap-2">
           <button
             onClick={handleDelete}
             disabled={deleteMutation.isPending}
-            className="rounded-md border border-destructive/40 text-destructive px-3 py-1.5 text-sm font-medium hover:bg-destructive/10 disabled:opacity-60 flex items-center gap-1"
+            className="flex h-9 items-center gap-1.5 rounded-md border border-destructive/50 px-3 text-sm font-semibold text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-60"
           >
             <Trash2 size={14} />
             삭제
@@ -116,14 +136,15 @@ function DetailPanel({
           <button
             onClick={() => mutation.mutate()}
             disabled={mutation.isPending}
-            className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60"
+            className="h-9 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
           >
             {mutation.isPending ? "저장 중..." : "저장"}
           </button>
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 overflow-y-auto flex-1">
+      <div className="flex-1 overflow-y-auto px-5 py-5">
+        <div className="grid max-w-5xl gap-3">
         <Field label="부모 메뉴">
           <select
             value={form.parentId ?? ""}
@@ -131,8 +152,12 @@ function DetailPanel({
             className={inputCls}
           >
             <option value="">없음 (루트)</option>
-            {roots.map((m) => (
-              <option key={m.id} value={m.id}>{m.label} ({m.code})</option>
+            {parentOptions.map(({ menu: option, depth }) => (
+              <option key={option.id} value={option.id}>
+                {"　".repeat(depth)}
+                {depth > 0 ? "└ " : ""}
+                {option.label} ({option.code})
+              </option>
             ))}
           </select>
         </Field>
@@ -190,25 +215,18 @@ function DetailPanel({
           />
         </Field>
 
-        <div className="flex gap-4 text-sm">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={form.visible}
-              onChange={(e) => set("visible", e.target.checked)}
-              className="h-4 w-4"
-            />
-            표시
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={form.isExternal}
-              onChange={(e) => set("isExternal", e.target.checked)}
-              className="h-4 w-4"
-            />
-            외부 링크
-          </label>
+        <ToggleField
+          label="표시"
+          description="꺼두면 헤더 메뉴에서 숨겨집니다."
+          checked={form.visible}
+          onCheckedChange={(checked) => set("visible", checked)}
+        />
+        <ToggleField
+          label="외부 링크"
+          description="새 탭 링크로 열어야 하는 외부 URL일 때 사용합니다."
+          checked={form.isExternal}
+          onCheckedChange={(checked) => set("isExternal", checked)}
+        />
         </div>
       </div>
     </div>
@@ -252,18 +270,20 @@ function TreeNode({
           onSelect(item);
           if (hasChildren) onToggle(item.id);
         }}
-        className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg cursor-pointer group text-sm transition-colors ${
+        className={`group flex cursor-pointer items-center gap-2 rounded-md border px-2 py-2 text-sm transition-colors ${
           isSelected
-            ? "bg-primary/10 text-primary font-medium"
-            : "hover:bg-muted/60 text-muted-foreground hover:text-foreground"
+            ? "border-primary bg-primary text-primary-foreground"
+            : "border-transparent text-muted-foreground hover:border-border hover:bg-background hover:text-foreground"
         }`}
-        style={{ paddingLeft: `${depth * 14 + 8}px` }}
+        style={{ paddingLeft: `${depth * 16 + 8}px` }}
       >
         <div
           {...attributes}
           {...listeners}
           onClick={(e) => e.stopPropagation()}
-          className="p-0.5 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-40 hover:!opacity-100 transition-opacity"
+          className={`cursor-grab rounded p-0.5 transition-opacity active:cursor-grabbing ${
+            isSelected ? "opacity-80" : "opacity-30 group-hover:opacity-80"
+          }`}
         >
           <GripVertical size={14} />
         </div>
@@ -276,17 +296,33 @@ function TreeNode({
           <span className="w-3.5 shrink-0" />
         )}
 
-        <span className="truncate flex-1">{item.label}</span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-semibold">{item.label}</span>
+          {item.path && (
+            <span className={`block truncate font-mono text-[10px] ${
+              isSelected ? "text-primary-foreground/70" : "text-muted-foreground/70"
+            }`}>
+              {item.path}
+            </span>
+          )}
+        </span>
 
         {item.requiredRole && (
-          <span className="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 px-1 py-0.5 rounded font-mono shrink-0">
+          <span className={`shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] ${
+            isSelected
+              ? "bg-primary-foreground/15 text-primary-foreground"
+              : "bg-amber-500/15 text-amber-700"
+          }`}>
             {item.requiredRole.replace("ROLE_", "")}
           </span>
         )}
 
-        <span className="text-[10px] text-muted-foreground/40 font-mono opacity-0 group-hover:opacity-100 shrink-0">
-          {item.displayOrder}
-        </span>
+        {item.isExternal && <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-60" />}
+        {item.visible ? (
+          <Eye className="h-3.5 w-3.5 shrink-0 opacity-60" />
+        ) : (
+          <EyeOff className="h-3.5 w-3.5 shrink-0 text-destructive" />
+        )}
       </motion.div>
 
       <AnimatePresence initial={false}>
@@ -398,16 +434,17 @@ export function MenuTreeTab() {
   if (isLoading) return <p className="text-sm text-muted-foreground p-4">로딩 중...</p>;
 
   return (
-    <div className="flex gap-4 h-[600px]">
+    <div className="grid h-[640px] gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
       {/* Left: Tree */}
-      <div className="w-72 shrink-0 rounded-lg border border-border bg-muted/20 flex flex-col overflow-hidden">
-        <div className="px-3 py-2 border-b border-border flex items-center justify-between">
-          <div className="text-xs font-semibold text-muted-foreground">
-            메뉴 트리 <span className="ml-1 font-normal opacity-60">드래그로 순서 변경</span>
+      <div className="flex min-w-0 flex-col overflow-hidden rounded-lg border border-border bg-background">
+        <div className="flex items-center justify-between border-b border-border bg-muted/35 px-4 py-3">
+          <div>
+            <h2 className="text-sm font-bold">메뉴 트리</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">드래그로 같은 부모 안의 순서를 변경합니다.</p>
           </div>
           <button
             onClick={() => setCreateOpen(true)}
-            className="rounded-md bg-primary text-primary-foreground px-2 py-1 text-xs font-medium hover:opacity-90 flex items-center gap-1"
+            className="flex h-8 items-center gap-1 rounded-md bg-primary px-2.5 text-xs font-semibold text-primary-foreground hover:opacity-90"
           >
             <Plus size={12} />
             추가
@@ -443,7 +480,7 @@ export function MenuTreeTab() {
       </div>
 
       {/* Right: Detail */}
-      <div className="flex-1 rounded-lg border border-border bg-background p-4 overflow-hidden">
+      <div className="min-w-0 overflow-hidden rounded-lg border border-border bg-background">
         {selected ? (
           <DetailPanel
             key={selected.id}
@@ -453,8 +490,8 @@ export function MenuTreeTab() {
             onDeleted={() => setSelected(null)}
           />
         ) : (
-          <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
-            왼쪽 메뉴를 클릭하면 상세 편집할 수 있습니다.
+          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+            왼쪽 메뉴를 선택하면 상세 설정을 편집할 수 있습니다.
           </div>
         )}
       </div>
@@ -472,12 +509,41 @@ export function MenuTreeTab() {
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-1">
-      <label className="text-xs font-medium text-muted-foreground">{label}</label>
-      {children}
+    <div className="grid grid-cols-[8rem_minmax(0,1fr)] items-center gap-4">
+      <label className="text-right text-xs font-semibold text-muted-foreground">{label}</label>
+      <div className="min-w-0">{children}</div>
+    </div>
+  );
+}
+
+function ToggleField({
+  label,
+  description,
+  checked,
+  onCheckedChange,
+}: {
+  label: string;
+  description: string;
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+}) {
+  return (
+    <div className="grid grid-cols-[8rem_minmax(0,1fr)] items-center gap-4">
+      <span className="text-right text-xs font-semibold text-muted-foreground">{label}</span>
+      <div className="flex items-center justify-between rounded-md border border-border bg-muted/20 px-3 py-2.5">
+        <div>
+          <p className="text-sm font-semibold text-foreground">{checked ? "켜짐" : "꺼짐"}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
+        </div>
+        <Switch
+          checked={checked}
+          onCheckedChange={onCheckedChange}
+          aria-label={label}
+        />
+      </div>
     </div>
   );
 }
 
 const inputCls =
-  "rounded-md border border-input bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring";
+  "h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-ring/30";
