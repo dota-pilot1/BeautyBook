@@ -51,7 +51,11 @@ export function RolePermissionManager() {
   const toggle = (id: number) => {
     setCheckedIds((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
   };
@@ -61,7 +65,13 @@ export function RolePermissionManager() {
     const allChecked = ids.every((id) => checkedIds.has(id));
     setCheckedIds((prev) => {
       const next = new Set(prev);
-      ids.forEach((id) => (allChecked ? next.delete(id) : next.add(id)));
+      ids.forEach((id) => {
+        if (allChecked) {
+          next.delete(id);
+        } else {
+          next.add(id);
+        }
+      });
       return next;
     });
   };

@@ -33,7 +33,11 @@ export function SignupForm() {
   const onSubmit = handleSubmit(async (values) => {
     setFormError(null);
     try {
-      const { passwordConfirm: _, ...payload } = values;
+      const payload = {
+        email: values.email,
+        username: values.username,
+        password: values.password,
+      };
       await authApi.signup(payload);
       toast.success(t("signupSuccess"));
       router.push("/login");

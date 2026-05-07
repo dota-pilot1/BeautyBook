@@ -25,7 +25,7 @@ export function LanguageSelect() {
     } catch {
       /* ignore */
     }
-  }, []);
+  }, [i18n]);
 
   const currentCode = (i18n.language as LanguageCode) ?? "ko";
   const current =

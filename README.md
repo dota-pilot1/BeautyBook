@@ -18,6 +18,55 @@ JWT 인증, **RBAC (Role-Based Access Control)** 기반 역할·권한 관리, �
 | DB | PostgreSQL 15 |
 | Infra | Docker Compose |
 
+## 새 프로젝트 생성
+
+이 저장소를 보일러플레이트로 재사용할 때는 생성물과 로컬 시크릿을 직접 복사하지 말고 스크립트를 사용합니다.
+
+```bash
+scripts/create-project-from-template.sh \
+  /Users/terecal/RestaurantBook \
+  restaurant-book \
+  RestaurantBook \
+  restaurant_book \
+  com.cj.restaurantbook \
+  4200 \
+  4201 \
+  5435
+```
+
+인자 순서:
+
+| 인자 | 예시 | 설명 |
+| --- | --- | --- |
+| `TARGET_DIR` | `/Users/terecal/RestaurantBook` | 새 프로젝트 루트 |
+| `APP_SLUG` | `restaurant-book` | 폴더명, 패키지명 일부, 컨테이너명에 쓰는 kebab-case 이름 |
+| `DISPLAY_NAME` | `RestaurantBook` | UI 브랜드명과 Spring Boot Application 클래스명 |
+| `DB_NAME` | `restaurant_book` | PostgreSQL DB 이름 |
+| `JAVA_PACKAGE` | `com.cj.restaurantbook` | 백엔드 Java 루트 패키지 |
+| `FRONT_PORT` | `4200` | Next.js 포트 |
+| `BACKEND_PORT` | `4201` | Spring Boot 포트 |
+| `DB_PORT` | `5435` | 호스트 PostgreSQL 포트 |
+
+생성 결과:
+
+```text
+TARGET_DIR/
+├── APP_SLUG-front
+├── APP_SLUG-server
+├── docker-compose.yml
+└── README.md
+```
+
+스크립트는 `node_modules`, `.next`, `out`, `build`, `.gradle`, `.env`, `application-local.yaml` 같은 로컬 생성물과 민감 파일을 제외하고 복사합니다. `.env.example`은 새 프로젝트에 같이 복사됩니다.
+
+## 보일러플레이트 관리 규칙
+
+- 실제 시크릿은 커밋하지 않습니다. `beauty-book-server/.env.example`만 예시로 유지합니다.
+- 프론트 `.env.local`, 백엔드 `.env`, `application-local.yaml`은 로컬에서만 만듭니다.
+- 백엔드 `./gradlew bootRun`은 `beauty-book-server/.env`가 있으면 자동으로 읽어서 환경변수로 주입합니다.
+- `node_modules`, `.next`, `out`, `build`, `.gradle`, `.idea`, `.claude`, `.DS_Store`는 보일러플레이트에 포함하지 않습니다.
+- 새 프로젝트를 만든 뒤에는 별도 DB명, 별도 host port, 별도 docker volume을 사용합니다.
+
 ## 아키텍처
 
 ### 백엔드 — DDD 4-Layer × 바운디드 컨텍스트
@@ -171,6 +220,7 @@ docker compose up -d postgres
 
 ```bash
 cd beauty-book-server
+cp .env.example .env   # 필요한 경우 AWS/JWT 값을 채움
 ./gradlew bootRun
 ```
 

@@ -29,17 +29,22 @@ type Props = {
   onClose: () => void;
 };
 
+type RoleFormValues = {
+  code?: string;
+  name: string;
+  description?: string;
+};
+
 export function RoleFormDialog({ open, role, onClose }: Props) {
   const isEdit = !!role;
   const qc = useQueryClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const {
     register,
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm<any>({
+  } = useForm<RoleFormValues>({
     resolver: zodResolver(isEdit ? updateSchema : createSchema),
   });
 
@@ -54,10 +59,10 @@ export function RoleFormDialog({ open, role, onClose }: Props) {
   }, [open, role, isEdit, reset]);
 
   const mutation = useMutation({
-    mutationFn: (values: Record<string, string>) =>
+    mutationFn: (values: RoleFormValues) =>
       isEdit
         ? roleApi.update(role!.id, { name: values.name, description: values.description })
-        : roleApi.create({ code: values.code, name: values.name, description: values.description }),
+        : roleApi.create({ code: values.code ?? "", name: values.name, description: values.description }),
     onSuccess: () => {
       toast.success(isEdit ? "롤이 수정되었습니다." : "롤이 등록되었습니다.");
       qc.invalidateQueries({ queryKey: ["roles"] });
@@ -79,7 +84,7 @@ export function RoleFormDialog({ open, role, onClose }: Props) {
       >
         <h2 className="text-base font-semibold mb-4">{isEdit ? "롤 수정" : "롤 등록"}</h2>
 
-        <form onSubmit={handleSubmit((v) => mutation.mutate(v as Record<string, string>))} className="space-y-4">
+        <form onSubmit={handleSubmit((v) => mutation.mutate(v))} className="space-y-4">
           {!isEdit && (
             <Field label="코드" error={errors.code?.message as string}>
               <input
