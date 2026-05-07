@@ -208,20 +208,33 @@ beauty-book--front/src/
 
 ---
 
-## 초기 데이터 & 가입 정책
+## 초기 데이터
 
-앱 시작 시 자동 시딩:
+앱 시작 시 자동 시딩 (순서 보장):
 
-| 시더 | 내용 |
-| --- | --- |
-| `RoleSeeder` | ROLE_ADMIN / ROLE_MANAGER / ROLE_USER |
-| `PermissionCategorySeeder` | 기본 권한 카테고리 |
-| `PermissionSeeder` | 기본 권한 9종 |
-| `MenuSeeder` | 헤더 메뉴 기본 6개 |
+| 시더 | Order | 내용 |
+| --- | --- | --- |
+| `RoleSeeder` | 2 | ROLE_ADMIN / ROLE_MANAGER / ROLE_USER |
+| `PermissionCategorySeeder` | 3 | 기본 권한 카테고리 |
+| `PermissionSeeder` | 4 | 기본 권한 9종 |
+| `MenuSeeder` | 4 | 헤더 메뉴 기본 6개 |
+| `TestAccountSeeder` | 5 | 역할별 테스트 계정 (`*.beautybook.local`) |
+
+### 테스트 계정
+
+서버 시작 시 아래 계정이 자동 생성됩니다 (이미 존재하면 건너뜀).
+
+| 이메일 | 비밀번호 | 역할 |
+| --- | --- | --- |
+| `admin@beautybook.local` | `password123` | ROLE_ADMIN |
+| `manager@beautybook.local` | `password123` | ROLE_MANAGER |
+| `user@beautybook.local` | `password123` | ROLE_USER |
+
+> 운영 환경에서는 `.env` 에 `SEED_TEST_ACCOUNTS_ENABLED=false` 로 비활성화합니다.
 
 ## Default Roles
 
-기본 롤은 `RoleSeeder`에서 관리합니다. 역할 관리가 보일러플레이트에 기본 탑재되어 있으므로, 새 프로젝트로 파생할 때는 **이 초기 롤 목록과 회원가입 기본 롤만** 프로젝트 성격에 맞게 교체하면 됩니다.
+기본 롤은 `RoleSeeder`에서 관리합니다. 새 프로젝트로 파생할 때는 **롤 목록(`RoleSeeder.java`)과 회원가입 기본 롤(`SIGNUP_DEFAULT_ROLE`)만** 프로젝트 성격에 맞게 교체하면 됩니다.
 
 | 롤 | 설명 |
 | --- | --- |
@@ -229,11 +242,9 @@ beauty-book--front/src/
 | `ROLE_MANAGER` | 중간 관리자 |
 | `ROLE_USER` | 기본 가입자 |
 
-가입 정책:
-- **첫 번째 가입자** → 자동으로 `ROLE_ADMIN` 부여
-- **이후 가입자** → 기본 `ROLE_USER`
+회원가입 기본 롤: `ROLE_USER` (환경변수 `SIGNUP_DEFAULT_ROLE` 로 변경 가능)
 
-> 파생 프로젝트에서는 `RoleSeeder.java` 롤 목록과 `AuthService.java` 의 `signupRoleCode` 기본값만 교체하면 됩니다. 기존 DB에 이미 등록된 롤은 시더가 덮어쓰지 않으므로 DB 초기화 후 적용됩니다.
+> 기존 DB에 이미 등록된 롤은 시더가 덮어쓰지 않습니다. 롤 변경은 DB 초기화 후 적용됩니다.
 
 ---
 

@@ -12,7 +12,6 @@ import com.cj.beautybook.common.exception.BusinessException;
 import com.cj.beautybook.common.exception.DuplicateEmailException;
 import com.cj.beautybook.common.exception.ErrorCode;
 import com.cj.beautybook.common.exception.InvalidRefreshTokenException;
-import com.cj.beautybook.config.RoleSeeder;
 import com.cj.beautybook.role.domain.Role;
 import com.cj.beautybook.role.infrastructure.RoleRepository;
 import com.cj.beautybook.user.domain.User;
@@ -21,6 +20,7 @@ import com.cj.beautybook.user.presentation.dto.*;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +31,9 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class AuthService {
+
+    @Value("${auth.signup.default-role:ROLE_USER}")
+    private String signupDefaultRole;
 
     private final UserRepository userRepository;
     private final AuthAccountRepository authAccountRepository;
@@ -47,10 +50,7 @@ public class AuthService {
         if (authAccountRepository.existsByProviderTypeAndIdentifier(AuthProviderType.EMAIL, email)) {
             throw new DuplicateEmailException();
         }
-        String signupRoleCode = userRepository.count() == 0
-                ? RoleSeeder.ROLE_ADMIN
-                : RoleSeeder.ROLE_USER;
-        Role defaultRole = roleRepository.findByCode(signupRoleCode)
+        Role defaultRole = roleRepository.findByCode(signupDefaultRole)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ROLE_NOT_FOUND));
         String hash = passwordEncoder.encode(req.password());
         User saved = userRepository.save(User.createNewUser(req.username(), defaultRole));

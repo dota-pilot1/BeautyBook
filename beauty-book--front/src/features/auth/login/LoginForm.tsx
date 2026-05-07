@@ -38,7 +38,7 @@ export function LoginForm({ nextPath }: LoginFormProps) {
     resolver: zodResolver(loginSchema),
     mode: "onBlur",
     defaultValues: {
-      email: "terecal@daum.net",
+      email: "admin@beautybook.local",
       password: "password123",
     },
   });
