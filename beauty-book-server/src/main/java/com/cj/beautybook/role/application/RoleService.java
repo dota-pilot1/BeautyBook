@@ -63,9 +63,6 @@ public class RoleService {
     @Transactional
     public void delete(Long id) {
         Role role = getById(id);
-        if (role.isSystemRole()) {
-            throw new BusinessException(ErrorCode.ROLE_SYSTEM_READONLY);
-        }
         if (userRepository.existsByRoleId(id)) {
             throw new BusinessException(ErrorCode.ROLE_IN_USE);
         }

@@ -19,7 +19,7 @@ public enum ErrorCode {
     MAIL_NOT_CONFIGURED(HttpStatus.SERVICE_UNAVAILABLE, "AUTH_010", "이메일 발송 설정이 필요합니다."),
     ROLE_NOT_FOUND(HttpStatus.NOT_FOUND, "ROLE_001", "롤을 찾을 수 없습니다."),
     ROLE_CODE_DUPLICATE(HttpStatus.CONFLICT, "ROLE_002", "이미 존재하는 롤 코드입니다."),
-    ROLE_SYSTEM_READONLY(HttpStatus.BAD_REQUEST, "ROLE_003", "시스템 롤은 수정 또는 삭제할 수 없습니다."),
+    ROLE_SYSTEM_READONLY(HttpStatus.BAD_REQUEST, "ROLE_003", "시스템 롤은 수정할 수 없습니다."),
     ROLE_IN_USE(HttpStatus.CONFLICT, "ROLE_004", "해당 롤을 사용 중인 유저가 있어 삭제할 수 없습니다."),
     PERMISSION_NOT_FOUND(HttpStatus.NOT_FOUND, "PERM_001", "권한을 찾을 수 없습니다."),
     PERMISSION_CODE_DUPLICATE(HttpStatus.CONFLICT, "PERM_002", "이미 존재하는 권한 코드입니다."),

@@ -13,12 +13,18 @@ export function RoleTable() {
   const qc = useQueryClient();
   const [formTarget, setFormTarget] = useState<Role | null | "new">(null);
   const [deleteTarget, setDeleteTarget] = useState<Role | null>(null);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [permTarget, setPermTarget] = useState<Role | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   const { data: roles, isLoading, isError } = useQuery({
     queryKey: ["roles"],
     queryFn: roleApi.list,
   });
+
+  const roleList = roles ?? [];
+  const selectedCount = selectedIds.size;
+  const allSelected = roleList.length > 0 && roleList.every((role) => selectedIds.has(role.id));
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => roleApi.delete(id),
@@ -26,16 +32,75 @@ export function RoleTable() {
       toast.success("롤이 삭제되었습니다.");
       qc.invalidateQueries({ queryKey: ["roles"] });
       setDeleteTarget(null);
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        if (deleteTarget) next.delete(deleteTarget.id);
+        return next;
+      });
     },
     onError: (e) => toastError(e, "삭제에 실패했습니다."),
   });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids: number[]) => {
+      const results = await Promise.allSettled(ids.map((id) => roleApi.delete(id)));
+      return {
+        successCount: results.filter((result) => result.status === "fulfilled").length,
+        failCount: results.filter((result) => result.status === "rejected").length,
+      };
+    },
+    onSuccess: ({ successCount, failCount }) => {
+      if (successCount > 0 && failCount === 0) {
+        toast.success(`${successCount}개 롤이 삭제되었습니다.`);
+      } else if (successCount > 0) {
+        toast.warning(`${successCount}개 롤이 삭제되었고 ${failCount}개는 삭제하지 못했습니다.`);
+      } else {
+        toast.error("선택한 롤을 삭제하지 못했습니다.");
+      }
+      qc.invalidateQueries({ queryKey: ["roles"] });
+      setSelectedIds(new Set());
+      setBulkDeleteOpen(false);
+    },
+    onError: (e) => toastError(e, "선택 삭제에 실패했습니다."),
+  });
+
+  const toggleAll = () => {
+    if (allSelected) {
+      setSelectedIds(new Set());
+      return;
+    }
+    setSelectedIds(new Set(roleList.map((role) => role.id)));
+  };
+
+  const toggleOne = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
 
   if (isLoading) return <p className="text-sm text-muted-foreground">로딩 중...</p>;
   if (isError) return <p className="text-sm text-destructive">데이터를 불러오지 못했습니다.</p>;
 
   return (
     <>
-      <div className="mb-4 flex justify-end">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span>선택 {selectedCount}개</span>
+          <button
+            type="button"
+            onClick={() => setBulkDeleteOpen(true)}
+            disabled={selectedCount === 0}
+            className="rounded-md border border-destructive/50 px-3 py-1.5 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            선택 삭제
+          </button>
+        </div>
         <button
           onClick={() => setFormTarget("new")}
           className="rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-sm font-medium hover:opacity-90 transition-opacity"
@@ -48,6 +113,15 @@ export function RoleTable() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/40">
+              <Th className="w-10">
+                <input
+                  type="checkbox"
+                  aria-label="전체 롤 선택"
+                  checked={allSelected}
+                  onChange={toggleAll}
+                  className="h-4 w-4 rounded border-input"
+                />
+              </Th>
               <Th>ID</Th>
               <Th>코드</Th>
               <Th>이름</Th>
@@ -57,8 +131,17 @@ export function RoleTable() {
             </tr>
           </thead>
           <tbody>
-            {roles?.map((role) => (
+            {roleList.map((role) => (
               <tr key={role.id} className="border-b border-border last:border-0 hover:bg-muted/20">
+                <Td>
+                  <input
+                    type="checkbox"
+                    aria-label={`${role.name} 롤 선택`}
+                    checked={selectedIds.has(role.id)}
+                    onChange={() => toggleOne(role.id)}
+                    className="h-4 w-4 rounded border-input"
+                  />
+                </Td>
                 <Td className="text-muted-foreground">{role.id}</Td>
                 <Td>
                   <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">
@@ -122,6 +205,17 @@ export function RoleTable() {
         loading={deleteMutation.isPending}
         onConfirm={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
         onCancel={() => setDeleteTarget(null)}
+      />
+
+      <ConfirmDialog
+        open={bulkDeleteOpen}
+        title={`${selectedCount}개 롤을 삭제하시겠습니까?`}
+        description={"사용 중인 롤은 삭제할 수 없습니다.\n삭제 후 서버를 재시작하면 누락된 기본 롤은 초기화 파일 기준으로 다시 생성됩니다."}
+        variant="destructive"
+        confirmText="선택 삭제"
+        loading={bulkDeleteMutation.isPending}
+        onConfirm={() => bulkDeleteMutation.mutate(Array.from(selectedIds))}
+        onCancel={() => setBulkDeleteOpen(false)}
       />
     </>
   );
