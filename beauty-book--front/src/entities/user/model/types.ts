@@ -53,6 +53,9 @@ export type UserListItem = {
   role: RoleSummary;
   active: boolean;
   createdAt: string;
+  lastLoginAt?: string | null;
+  mfaEnabled?: boolean;
+  organization?: string | null;
 };
 
 export type UserPage = {

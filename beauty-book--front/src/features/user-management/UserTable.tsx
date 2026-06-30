@@ -96,8 +96,11 @@ export function UserTable() {
               <Th>ID</Th>
               <Th>이름</Th>
               <Th>이메일</Th>
+              <Th>소속</Th>
               <Th>역할</Th>
-              <Th>상태</Th>
+              <Th>계정 상태</Th>
+              <Th>MFA</Th>
+              <Th>마지막 로그인</Th>
               <Th>가입일</Th>
               <Th className="text-right">액션</Th>
             </tr>
@@ -105,7 +108,7 @@ export function UserTable() {
           <tbody>
             {data.content.length === 0 ? (
               <tr>
-                <td colSpan={7} className="py-8 text-center text-muted-foreground">
+                <td colSpan={10} className="py-8 text-center text-muted-foreground">
                   유저가 없습니다.
                 </td>
               </tr>
@@ -115,14 +118,27 @@ export function UserTable() {
                   <Td>{u.id}</Td>
                   <Td className="font-medium">{u.username}</Td>
                   <Td className="text-muted-foreground">{u.email}</Td>
+                  <Td className="text-muted-foreground">{u.organization ?? "-"}</Td>
                   <Td><RoleBadge role={u.role} /></Td>
                   <Td>
-                    <span className={u.active ? "text-green-600" : "text-muted-foreground"}>
-                      {u.active ? "활성" : "비활성"}
+                    <span
+                      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                        u.active
+                          ? "bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-300"
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {u.active ? "정상" : "중지"}
                     </span>
                   </Td>
+                  <Td>
+                    <span className={u.mfaEnabled ? "text-green-600" : "text-muted-foreground"}>
+                      {u.mfaEnabled ? "사용" : "미설정"}
+                    </span>
+                  </Td>
+                  <Td className="text-muted-foreground">{formatDateTime(u.lastLoginAt)}</Td>
                   <Td className="text-muted-foreground">
-                    {new Date(u.createdAt).toLocaleDateString("ko-KR")}
+                    {formatDate(u.createdAt)}
                   </Td>
                   <Td className="text-right">
                     <div className="inline-flex gap-2">
@@ -183,6 +199,22 @@ export function UserTable() {
       />
     </div>
   );
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return "-";
+  return new Date(value).toLocaleDateString("ko-KR");
+}
+
+function formatDateTime(value?: string | null) {
+  if (!value) return "-";
+  return new Date(value).toLocaleString("ko-KR", {
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function Th({ children, className = "" }: { children: React.ReactNode; className?: string }) {

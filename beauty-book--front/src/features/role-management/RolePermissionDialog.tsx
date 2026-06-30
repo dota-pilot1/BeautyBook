@@ -1,23 +1,35 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { roleApi } from "@/entities/user/api/roleApi";
+import { useEffect, useMemo, useState } from "react";
+import { Search } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { permissionApi } from "@/entities/permission/api/permissionApi";
-import { toast, toastError } from "@/shared/lib/toast";
-import type { Role } from "@/entities/user/model/types";
 import type { Permission } from "@/entities/permission/model/types";
+import { roleApi } from "@/entities/user/api/roleApi";
+import type { Role } from "@/entities/user/model/types";
+import { toast, toastError } from "@/shared/lib/toast";
 
 type Props = {
   role: Role | null;
   onClose: () => void;
 };
 
-const CATEGORY_ORDER = ["USER", "ROLE", "PERMISSION", "DASHBOARD", "REPORT", "SYSTEM"];
+const CATEGORY_ORDER = [
+  "RESERVATION",
+  "SERVICE",
+  "CUSTOMER",
+  "USER",
+  "ROLE",
+  "PERMISSION",
+  "REVENUE",
+  "DASHBOARD",
+  "SYSTEM",
+];
 
 export function RolePermissionDialog({ role, onClose }: Props) {
   const qc = useQueryClient();
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [keyword, setKeyword] = useState("");
 
   const { data: allPermissions, isLoading: allLoading } = useQuery({
     queryKey: ["permissions"],
@@ -33,7 +45,7 @@ export function RolePermissionDialog({ role, onClose }: Props) {
 
   useEffect(() => {
     if (rolePermissions) {
-      setSelected(new Set(rolePermissions.map((p) => p.id)));
+      setSelected(new Set(rolePermissions.map((permission) => permission.id)));
     }
   }, [rolePermissions]);
 
@@ -45,7 +57,7 @@ export function RolePermissionDialog({ role, onClose }: Props) {
       qc.invalidateQueries({ queryKey: ["role-permissions", role?.id] });
       onClose();
     },
-    onError: (e) => toastError(e, "저장에 실패했습니다."),
+    onError: (error) => toastError(error, "저장에 실패했습니다."),
   });
 
   const toggle = (id: number) => {
@@ -60,25 +72,69 @@ export function RolePermissionDialog({ role, onClose }: Props) {
     });
   };
 
-  if (!role) return null;
-
   const isLoading = allLoading || roleLoading;
+  const normalizedKeyword = keyword.trim().toLowerCase();
 
-  const grouped = allPermissions?.reduce<Record<string, Permission[]>>((acc, p) => {
-    const categoryCode = p.category?.code ?? "UNCATEGORIZED";
-    (acc[categoryCode] = acc[categoryCode] ?? []).push(p);
-    return acc;
-  }, {});
+  const filteredPermissions = useMemo(() => {
+    if (!allPermissions) return [];
+    if (!normalizedKeyword) return allPermissions;
+    return allPermissions.filter((permission) => {
+      const haystack = [
+        permission.name,
+        permission.code,
+        permission.description,
+        permission.category?.name,
+        permission.category?.code,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(normalizedKeyword);
+    });
+  }, [allPermissions, normalizedKeyword]);
 
-  const categoryLabels = allPermissions?.reduce<Record<string, string>>((acc, p) => {
-    const categoryCode = p.category?.code ?? "UNCATEGORIZED";
-    acc[categoryCode] = p.category?.name ?? "미분류";
-    return acc;
-  }, {});
+  const grouped = useMemo(
+    () =>
+      filteredPermissions.reduce<Record<string, Permission[]>>((acc, permission) => {
+        const categoryCode = permission.category?.code ?? "UNCATEGORIZED";
+        (acc[categoryCode] = acc[categoryCode] ?? []).push(permission);
+        return acc;
+      }, {}),
+    [filteredPermissions]
+  );
 
-  const orderedCategories = grouped
-    ? [...CATEGORY_ORDER.filter((c) => grouped[c]), ...Object.keys(grouped).filter((c) => !CATEGORY_ORDER.includes(c))]
-    : [];
+  const categoryLabels = useMemo(
+    () =>
+      filteredPermissions.reduce<Record<string, string>>((acc, permission) => {
+        const categoryCode = permission.category?.code ?? "UNCATEGORIZED";
+        acc[categoryCode] = permission.category?.name ?? "미분류";
+        return acc;
+      }, {}),
+    [filteredPermissions]
+  );
+
+  const orderedCategories = [
+    ...CATEGORY_ORDER.filter((category) => grouped[category]),
+    ...Object.keys(grouped).filter((category) => !CATEGORY_ORDER.includes(category)),
+  ];
+
+  const toggleCategory = (permissions: Permission[]) => {
+    const ids = permissions.map((permission) => permission.id);
+    const allChecked = ids.every((id) => selected.has(id));
+    setSelected((prev) => {
+      const next = new Set(prev);
+      ids.forEach((id) => {
+        if (allChecked) {
+          next.delete(id);
+        } else {
+          next.add(id);
+        }
+      });
+      return next;
+    });
+  };
+
+  if (!role) return null;
 
   return (
     <div
@@ -86,56 +142,155 @@ export function RolePermissionDialog({ role, onClose }: Props) {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg rounded-lg border border-border bg-background p-6 shadow-lg max-h-[80vh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}
+        className="flex max-h-[84vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg border border-border bg-background shadow-xl"
+        onClick={(event) => event.stopPropagation()}
       >
-        <div className="mb-4">
-          <h2 className="text-base font-semibold">권한 설정</h2>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">{role.code}</span>
-            <span className="ml-2">{role.name}</span>
-          </p>
+        <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[260px_1fr]">
+          <aside className="border-b border-border bg-muted/30 p-5 md:border-b-0 md:border-r">
+            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Role Permission
+            </p>
+            <h2 className="mt-2 text-lg font-bold tracking-tight">
+              {role.name}에 대한 권한 설정
+            </h2>
+            <div className="mt-4 space-y-3 text-sm">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">롤 코드</p>
+                <p className="mt-1 inline-flex rounded bg-background px-2 py-1 font-mono text-xs text-foreground">
+                  {role.code}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">선택 권한</p>
+                <p className="mt-1 text-2xl font-bold tracking-tight">{selected.size}</p>
+              </div>
+              {role.description && (
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">설명</p>
+                  <p className="mt-1 leading-6 text-muted-foreground">{role.description}</p>
+                </div>
+              )}
+            </div>
+            <div className="mt-5 rounded-md border border-border bg-background p-3 text-xs leading-5 text-muted-foreground">
+              권한은 유저에게 직접 주지 않고 롤에 묶어 관리합니다. 저장 후 이 롤을 가진 직원과 고객에게 적용됩니다.
+            </div>
+
+            {role.systemRole && (
+              <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300">
+                시스템 기본 롤
+              </div>
+            )}
+          </aside>
+
+          <section className="flex min-h-0 flex-col">
+            <div className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 className="text-base font-semibold">권한 목록</h3>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  카테고리별 권한을 선택해 {role.name} 롤에 부여합니다.
+                </p>
+              </div>
+              <div className="relative w-full sm:w-72">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  value={keyword}
+                  onChange={(event) => setKeyword(event.target.value)}
+                  placeholder="권한명, 코드 검색"
+                  className="h-9 w-full rounded-md border border-input bg-background pl-8 pr-3 text-sm outline-none focus:border-primary"
+                />
+              </div>
+            </div>
+
+            {isLoading ? (
+              <p className="px-5 py-8 text-sm text-muted-foreground">로딩 중...</p>
+            ) : (
+              <div className="flex-1 overflow-y-auto px-5 py-4">
+                {orderedCategories.length === 0 ? (
+                  <div className="flex h-40 items-center justify-center rounded-md border border-dashed border-border text-sm text-muted-foreground">
+                    검색 결과가 없습니다.
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {orderedCategories.map((category) => {
+                      const permissions = grouped[category];
+                      const selectedCount = permissions.filter((permission) => selected.has(permission.id)).length;
+                      const allChecked = selectedCount === permissions.length;
+                      const someChecked = selectedCount > 0 && !allChecked;
+
+                      return (
+                        <section key={category} className="rounded-md border border-border">
+                          <div className="flex h-10 items-center justify-between border-b border-border bg-muted/30 px-3">
+                            <button
+                              type="button"
+                              onClick={() => toggleCategory(permissions)}
+                              className="flex min-w-0 items-center gap-2 text-left"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={allChecked}
+                                ref={(element) => {
+                                  if (element) element.indeterminate = someChecked;
+                                }}
+                                readOnly
+                                className="h-4 w-4 rounded border-input accent-primary"
+                              />
+                              <span className="truncate text-xs font-semibold uppercase text-muted-foreground">
+                                {categoryLabels[category] ?? category}
+                              </span>
+                            </button>
+                            <span className="shrink-0 rounded bg-background px-2 py-0.5 text-xs text-muted-foreground">
+                              {selectedCount}/{permissions.length}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-1 gap-px bg-border sm:grid-cols-2">
+                            {permissions.map((permission) => {
+                              const checked = selected.has(permission.id);
+
+                              return (
+                                <label
+                                  key={permission.id}
+                                  className={`flex min-h-14 cursor-pointer items-start gap-2 bg-background px-3 py-2.5 transition-colors hover:bg-accent ${
+                                    checked ? "bg-primary/5" : ""
+                                  }`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={() => toggle(permission.id)}
+                                    className="mt-0.5 h-4 w-4 rounded border-input accent-primary"
+                                  />
+                                  <span className="min-w-0">
+                                    <span className="flex min-w-0 items-center gap-2">
+                                      <span className="truncate text-sm font-medium leading-tight">
+                                        {permission.name}
+                                      </span>
+                                      <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
+                                        {permission.code}
+                                      </span>
+                                    </span>
+                                    {permission.description && (
+                                      <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                                        {permission.description}
+                                      </span>
+                                    )}
+                                  </span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </section>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
         </div>
 
-        {isLoading ? (
-          <p className="text-sm text-muted-foreground py-4">로딩 중...</p>
-        ) : (
-          <div className="overflow-y-auto flex-1 space-y-4 pr-1">
-            {orderedCategories.map((category) => (
-              <div key={category}>
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                  {categoryLabels?.[category] ?? category}
-                </p>
-                <div className="space-y-1">
-                  {grouped![category].map((p) => (
-                    <label
-                      key={p.id}
-                      className="flex items-center gap-3 rounded-md px-3 py-2 cursor-pointer hover:bg-muted/50"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selected.has(p.id)}
-                        onChange={() => toggle(p.id)}
-                        className="h-4 w-4 rounded border-input accent-primary"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <span className="text-sm font-medium">{p.name}</span>
-                        <span className="ml-2 font-mono text-xs text-muted-foreground">{p.code}</span>
-                        {p.description && (
-                          <p className="text-xs text-muted-foreground mt-0.5">{p.description}</p>
-                        )}
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="flex justify-between items-center mt-4 pt-4 border-t border-border">
+        <div className="flex items-center justify-between border-t border-border bg-background px-5 py-3">
           <span className="text-xs text-muted-foreground">
-            {selected.size}개 선택됨
+            전체 {allPermissions?.length ?? 0}개 중 {selected.size}개 선택
           </span>
           <div className="flex gap-2">
             <button
@@ -149,7 +304,7 @@ export function RolePermissionDialog({ role, onClose }: Props) {
               type="button"
               disabled={mutation.isPending}
               onClick={() => mutation.mutate([...selected])}
-              className="rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-sm font-medium hover:opacity-90 disabled:opacity-60"
+              className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60"
             >
               {mutation.isPending ? "저장 중..." : "저장"}
             </button>
