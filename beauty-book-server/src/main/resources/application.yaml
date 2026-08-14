@@ -5,6 +5,9 @@ spring:
   application:
     name: beauty-book-server
 
+  profiles:
+    default: dev
+
   config:
     import: optional:classpath:application-local.yaml
 

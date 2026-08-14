@@ -404,19 +404,21 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur-sm">
-      <div className="flex h-14 w-full items-center justify-between px-4">
-        <nav className="flex min-w-0 items-center gap-5">
-          <Link
-            href="/"
-            className="mr-2 text-sm font-semibold tracking-tight hover:opacity-80 transition-opacity"
-          >
-            BeautyBook
-          </Link>
-          {status === "authenticated" &&
-            tree.map((item) => <NavItem key={item.id} item={item} />)}
-        </nav>
+      <div className="relative flex h-14 w-full items-center px-4">
+        <Link
+          href="/"
+          className="text-sm font-semibold tracking-tight hover:opacity-80 transition-opacity"
+        >
+          BeautyBook
+        </Link>
 
-        <div className="flex items-center gap-2">
+        {status === "authenticated" && (
+          <nav className="absolute left-1/2 flex -translate-x-1/2 items-center gap-5">
+            {tree.map((item) => <NavItem key={item.id} item={item} />)}
+          </nav>
+        )}
+
+        <div className="ml-auto flex items-center gap-2">
           <LanguageSelect />
           <ThemeSwitcher />
           {status === "authenticated" ? (
