@@ -76,9 +76,64 @@ const adminMenuMeta: Record<string, { description: string; icon: LucideIcon }> =
   ADMIN_MENU_MANAGEMENT: { description: "상단 헤더 메뉴와 노출 구성을 조정합니다.", icon: Menu },
 };
 
+const beautyAdminSections = [
+  {
+    label: "운영 관리",
+    codes: [
+      "ADMIN_RESERVATIONS",
+      "ADMIN_APPOINTMENT_BOARD",
+      "ADMIN_SERVICES",
+      "ADMIN_SERVICE_CATEGORIES",
+      "ADMIN_SERVICE_AVAILABILITY",
+      "ADMIN_REVENUE",
+    ],
+  },
+  {
+    label: "시스템 관리",
+    codes: [
+      "ADMIN_USERS",
+      "ADMIN_ROLES",
+      "ADMIN_PERMISSIONS",
+      "ADMIN_ROLE_PERMISSIONS",
+      "ADMIN_SITE_SETTINGS",
+      "ADMIN_SCREEN_SETTINGS",
+      "ADMIN_NAV_MANAGEMENT",
+      "ADMIN_MENU_MANAGEMENT",
+    ],
+  },
+];
+
 function flattenLeaves(item: MenuItem): MenuItem[] {
   if (item.children.length === 0) return item.path ? [item] : [];
   return item.children.flatMap(flattenLeaves);
+}
+
+function buildAdminGroups(item: MenuItem) {
+  if (item.children.some((child) => child.children.length > 0)) {
+    return item.children.map((child) => ({
+      id: child.id,
+      label: child.label,
+      children: child.children.length > 0 ? child.children : [child],
+    }));
+  }
+
+  const used = new Set<string>();
+  const groups = beautyAdminSections
+    .map((section, index) => {
+      const children = section.codes
+        .map((code) => item.children.find((child) => child.code === code))
+        .filter((child): child is MenuItem => Boolean(child));
+      children.forEach((child) => used.add(child.code));
+      return { id: -index - 1, label: section.label, children };
+    })
+    .filter((group) => group.children.length > 0);
+
+  const uncategorized = item.children.filter((child) => !used.has(child.code));
+  if (uncategorized.length > 0) {
+    groups.push({ id: -99, label: "기타", children: uncategorized });
+  }
+
+  return groups;
 }
 
 function AdminMegaMenu({ item }: { item: MenuItem }) {
@@ -87,10 +142,7 @@ function AdminMegaMenu({ item }: { item: MenuItem }) {
   const pathname = usePathname();
   const leaves = flattenLeaves(item);
   const isActive = leaves.some((leaf) => leaf.path && pathname.startsWith(leaf.path));
-  const groups =
-    item.children.some((child) => child.children.length > 0)
-      ? item.children
-      : [{ ...item, id: -1, label: "관리", children: item.children }];
+  const groups = buildAdminGroups(item);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -117,72 +169,57 @@ function AdminMegaMenu({ item }: { item: MenuItem }) {
       </button>
 
       {open && (
-        <div className="absolute left-1/2 top-full z-50 mt-2 w-[760px] -translate-x-1/2 overflow-hidden rounded-lg border border-border bg-background shadow-xl">
-          <div className="grid grid-cols-[240px_1fr]">
-            <aside className="border-r border-border bg-muted/45 p-5">
-              <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                Admin
-              </p>
-              <h3 className="mt-2 text-xl font-bold tracking-tight">관리 센터</h3>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                권한별 관리 메뉴를 한 곳에서 빠르게 이동합니다.
-              </p>
-              <Link
-                href="/dashboard"
-                onClick={() => setOpen(false)}
-                className="mt-5 inline-flex h-10 items-center gap-2 rounded-md bg-primary px-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+        <div className="absolute left-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-lg border border-border bg-background shadow-xl">
+          <div className="max-h-[min(520px,calc(100vh-7rem))] overflow-y-auto p-2">
+            {groups.map((group, groupIndex) => (
+              <section
+                key={group.id}
+                className={groupIndex > 0 ? "mt-2 border-t border-border pt-2" : ""}
               >
-                <LayoutDashboard className="h-4 w-4" />
-                대시보드
-              </Link>
-            </aside>
+                <h3 className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {group.label}
+                </h3>
+                <div className="space-y-1">
+                  {group.children.map((child) => {
+                    const meta = adminMenuMeta[child.code] ?? {
+                      description: "관리 기능으로 이동합니다.",
+                      icon: Settings,
+                    };
+                    const Icon = meta.icon;
+                    const childActive = child.path ? pathname.startsWith(child.path) : false;
 
-            <section className="grid grid-cols-2 gap-3 bg-background p-4">
-              {groups.map((group) => {
-                const children = group.children.filter((child) => child.path || child.children.length > 0);
-                if (children.length === 0) return null;
-
-                return (
-                  <div key={group.id} className="rounded-lg border border-border bg-muted/20 p-3">
-                    <h4 className="text-sm font-bold tracking-tight">{group.label}</h4>
-                    <div className="mt-3 space-y-1.5">
-                      {children.flatMap((child) =>
-                        child.children.length > 0 ? child.children : [child]
-                      ).map((child) => {
-                        const meta = adminMenuMeta[child.code] ?? {
-                          description: "관리 기능으로 이동합니다.",
-                          icon: Settings,
-                        };
-                        const Icon = meta.icon;
-
-                        return (
-                          <Link
-                            key={child.id}
-                            href={child.path ?? "#"}
-                            target={child.isExternal ? "_blank" : undefined}
-                            rel={child.isExternal ? "noopener noreferrer" : undefined}
-                            onClick={() => setOpen(false)}
-                            className="group flex gap-3 rounded-md border border-transparent bg-background p-2.5 transition-colors hover:border-primary hover:bg-accent"
-                          >
-                            <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-muted text-muted-foreground transition-colors group-hover:border-primary group-hover:bg-primary group-hover:text-primary-foreground">
-                              <Icon className="h-4 w-4" />
-                            </span>
-                            <span className="min-w-0">
-                              <span className="block truncate text-sm font-semibold text-foreground">
-                                {child.label}
-                              </span>
-                              <span className="mt-0.5 line-clamp-2 block text-xs leading-5 text-muted-foreground">
-                                {meta.description}
-                              </span>
-                            </span>
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </section>
+                    return (
+                      <Link
+                        key={child.id}
+                        href={child.path ?? "#"}
+                        target={child.isExternal ? "_blank" : undefined}
+                        rel={child.isExternal ? "noopener noreferrer" : undefined}
+                        onClick={() => setOpen(false)}
+                        title={meta.description}
+                        className={`group flex min-w-0 items-center gap-2 rounded-md px-2.5 py-2 transition-colors ${
+                          childActive
+                            ? "bg-primary text-primary-foreground"
+                            : "text-foreground hover:bg-accent"
+                        }`}
+                      >
+                        <span
+                          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md border transition-colors ${
+                            childActive
+                              ? "border-primary-foreground/25 bg-primary-foreground/10"
+                              : "border-border bg-muted text-muted-foreground group-hover:border-primary group-hover:text-primary"
+                          }`}
+                        >
+                          <Icon className="h-4 w-4" />
+                        </span>
+                        <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                          {child.label}
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
           </div>
         </div>
       )}
